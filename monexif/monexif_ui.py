@@ -1,5 +1,5 @@
 from guiFlds.guiFlds import guiFlds
-from guiFlds.guiFldsTk import guiFldsTk
+from guiFlds.guiFlds_ttk import guiFldsTTK
 
 import monexif
 
@@ -8,7 +8,7 @@ class MonExifUI(guiFlds):
 
     # fields and commands, see guiFlds.py for documentation
     fldList = (
-        ("imgdir", str, "Image Folder", "", "__OPENDIR__"),
+        ("imgdir", str, "Image Folder", ".", "__OPENDIR__"),
         ("Scan", None),
     )
 
@@ -19,4 +19,4 @@ class MonExifUI(guiFlds):
         print(monexif.image_list(self.fldDict()["imgdir"]))
 
 
-guiFldsTk(MonExifUI())
+guiFldsTTK(MonExifUI())
