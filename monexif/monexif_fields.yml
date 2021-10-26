@@ -1,0 +1,29 @@
+fields:
+  image_time:
+    type: datetime
+  people_n:
+      type: integer
+  direction:
+    type: text
+    values:
+      - north
+      - south
+  actitivity:
+    type: text
+    values:
+      - walking
+      - skating / rollerblading
+      - pet-walking
+      - biking
+  related:
+    type: text
+  image_name:
+    type: text
+  image_path:
+    type: text
+  image_bytes:
+    type: integer
+  camera_id:
+    type: text
+  image_hash:
+    type: text

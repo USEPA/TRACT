@@ -4,6 +4,8 @@ from tkinter import filedialog
 
 from PIL import Image, ImageTk
 
+import monexif
+
 
 def P(x, **kwargs):
     pack_kwargs = dict(padx=2, pady=2, side="left")
@@ -73,6 +75,7 @@ class MonExifUI:
             text = filedialog.asksaveasfilename()
             if text:
                 value.set(text)
+                monexif.create_data_file(text)
 
         P(ttk.Button(f, text="Create new data file", command=cb), **pad)
 
