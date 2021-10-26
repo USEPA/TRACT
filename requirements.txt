@@ -1,3 +1,5 @@
+python-dateutil
+exif
+openpyxl
 pillow
 pyyaml
-openpyxl
