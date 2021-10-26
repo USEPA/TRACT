@@ -1,4 +1,5 @@
 import sqlite3
+import platform
 from itertools import product
 from pathlib import Path
 
@@ -35,42 +36,58 @@ def xlsx_to_sqlite(xlsx_path: str, sqlite_path) -> None:
 def image_list(path: str) -> list[str]:
     """List of images from path *and its subfolders*."""
 
+    if platform.system() == "Windows":
+        transforms = [lambda x: x]  # case insensitive filesystem
+    else:
+        transforms = (str.upper, str.lower, str.title)
+        
     image_paths = []
     #  Iterate .jpg, .JPEG, .Png etc.
     for transform, extension in product(
-        (str.upper, str.lower, str.title), ("jpg", "png", "jpeg", "gif")
+        transforms, ("jpg", "png", "jpeg", "gif")
     ):
         ext = transform(extension)
         image_paths.extend(
-            [str(i.relative_to(path)) for i in Path(path).rglob(f"*.{ext}")]
+            [str(i.relative_to(Path.cwd())) for i in Path(path).rglob(f"*.{ext}")]
         )
     return image_paths
 
 
 def read_exif(path: str) -> dict:
     img = exif.Image(Path(path).open("rb"))
-    return {i: getattr(img, i) for i in img.list_all()}
-
+    result = {}
+    for key in img.list_all():
+        try:
+            result[key] = getattr(img, key)
+        except Exception:  # a zoo of different exceptions possible
+            continue
+    # import pprint
+    # pprint.pprint(result)
+    return result
 
 def image_time_filename(exif: dict) -> str:
+    """FIXME: assumes .jpg"""
+    import pprint
+    # pprint.pprint(exif)
+    # print(list(exif))
+    return exif["datetime_original"].replace(":", "").replace(" ", "_") + ".jpg"
 
-    for i in img.list_all():
-        if "date" in i:
-            print(i, getattr(img, i))
 
-
-def new_image_names(paths: list[str]) -> list[(str, str)]:
+def new_image_names(paths: list[str], do_renames: bool=False) -> list[(str, str)]:
     renames = []
     for img_path in paths:
         exif = read_exif(img_path)
         name = image_time_filename(exif)
         if Path(img_path).name != name:
-            renames.append((img_path, Path(img_path).with_name(name)))
+            new_path = Path(img_path).with_name(name)
+            renames.append((img_path, new_path))
+            if do_renames:
+                Path(img_path).rename(new_path)
     return renames
 
 
 if __name__ == "__main__":
-    # print(image_list("."))
+    # print(image_list("pics"))
     # create_data_file("test.xlsx")
     # xlsx_to_sqlite("test.xlsx", "test.db")
-    print(new_image_names(image_list(".")))
+    print(new_image_names(image_list("pics")))

@@ -82,7 +82,23 @@ class MonExifUI:
         return self.frm_setup
 
     def make_tools_frame(self):
-        self.frm_tools = ttk.Frame()
+        f = self.frm_tools = ttk.Frame()
+        
+        def cb(path_pics=self.path_pics):
+            imgs = monexif.image_list(path_pics.value.get())
+            print(imgs)
+            print(f"{len(imgs)}")
+            imgs = monexif.image_list(path_pics.value.get())
+            renames = monexif.new_image_names(imgs)
+            print(f"{len(imgs)}, {len(renames)} need renaming")
+
+        P(ttk.Button(f, text="Check image file names", command=cb))        
+
+        def cb(value=self.path_data.value):
+            pass
+
+        P(ttk.Button(f, text="Rename images", command=cb))        
+        
         return self.frm_tools
 
     def make_classify_frame(self):
