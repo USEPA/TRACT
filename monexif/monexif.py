@@ -1,5 +1,5 @@
-import sqlite3
 import platform
+import sqlite3
 from itertools import product
 from pathlib import Path
 
@@ -20,17 +20,26 @@ def create_data_file(path: str) -> None:
     wb.save(path)
 
 
+def insert_row(con, fields: list[str], row: list) -> None:
+    sql = "insert into imgdata (%s)" % ",".join(fields) + "values (%s)" % ",".join(
+        "?" * len(fields)
+    )
+
+
 def xlsx_to_sqlite(xlsx_path: str, sqlite_path) -> None:
-    """Convert .xlsx to .db, *OVERWRITING* existing .db."""
+    """Convert .xlsx to .db, *OVERWRITING* existing imgdata table."""
     fields = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
     wb = load_workbook(xlsx_path)
     ws = wb.active
     field_type = {k: v["type"] for k, v in fields["fields"].items()}
-    sql = [cell.value + " " + field_type.get(cell.value, "text") for cell in ws[0 + 1]]
+    fields = [cell.value for cell in ws[0 + 1]]
+    sql = [field + " " + field_type.get(field, "text") for field in fields]
     sql = "create table imgdata (\n" + ",\n".join(sql) + "\n)"
     con = sqlite3.connect(sqlite_path)
     con.execute("drop table if exists imgdata")
     con.execute(sql)
+    for row in ws[1 + 1 :]:
+        insert_row(con, fields, row)
 
 
 def image_list(path: str) -> list[str]:
@@ -40,12 +49,10 @@ def image_list(path: str) -> list[str]:
         transforms = [lambda x: x]  # case insensitive filesystem
     else:
         transforms = (str.upper, str.lower, str.title)
-        
+
     image_paths = []
     #  Iterate .jpg, .JPEG, .Png etc.
-    for transform, extension in product(
-        transforms, ("jpg", "png", "jpeg", "gif")
-    ):
+    for transform, extension in product(transforms, ("jpg", "png", "jpeg", "gif")):
         ext = transform(extension)
         image_paths.extend(
             [str(i.relative_to(Path.cwd())) for i in Path(path).rglob(f"*.{ext}")]
@@ -65,15 +72,13 @@ def read_exif(path: str) -> dict:
     # pprint.pprint(result)
     return result
 
+
 def image_time_filename(exif: dict) -> str:
     """FIXME: assumes .jpg"""
-    import pprint
-    # pprint.pprint(exif)
-    # print(list(exif))
     return exif["datetime_original"].replace(":", "").replace(" ", "_") + ".jpg"
 
 
-def new_image_names(paths: list[str], do_renames: bool=False) -> list[(str, str)]:
+def new_image_names(paths: list[str], do_renames: bool = False) -> list[(str, str)]:
     renames = []
     for img_path in paths:
         exif = read_exif(img_path)

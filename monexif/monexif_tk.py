@@ -2,10 +2,10 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog
 
+import monexif
 from PIL import Image, ImageTk
 
-import monexif
-
+SQLPATH = ":memory:"
 
 def P(x, **kwargs):
     pack_kwargs = dict(padx=2, pady=2, side="left")
@@ -53,17 +53,27 @@ class MonExifUI:
     def initialize(self):
         """layout gui, set up callbacks"""
 
+        stack = P(ttk.PanedWindow(self.root), fill="both", expand="yes")
         self.nb = P(
-            ttk.Notebook(self.root),
-            anchor="nw",
+            ttk.Notebook(stack),
             fill="both",
             expand="yes",
             pad=6,
+            side="top",
         )
+        self.nb.add(self.make_classify_frame(), text="Classify")
         self.nb.add(self.make_setup_frame(), text="Setup")
         self.nb.add(self.make_tools_frame(), text="Tools")
-        self.nb.add(self.make_classify_frame(), text="Classify")
-        # self.frm_setup.pack(fill="both", expand="yes")
+
+        self.console = tk.StringVar()
+        console = P(
+            ttk.Label(stack, textvariable=self.console, anchor="nw"),
+            pad=6,
+            side="top",
+        )
+        stack.add(self.nb)
+        stack.add(console)
+        self.console.set("test\nhere")
 
     def make_setup_frame(self):
         pad = dict(anchor="nw", side="top")
@@ -83,32 +93,40 @@ class MonExifUI:
 
     def make_tools_frame(self):
         f = self.frm_tools = ttk.Frame()
-        
+
         def cb(path_pics=self.path_pics):
             imgs = monexif.image_list(path_pics.value.get())
-            print(imgs)
-            print(f"{len(imgs)}")
-            imgs = monexif.image_list(path_pics.value.get())
             renames = monexif.new_image_names(imgs)
-            print(f"{len(imgs)}, {len(renames)} need renaming")
+            print(f"{len(imgs)} images, {len(renames)} need renaming")
 
-        P(ttk.Button(f, text="Check image file names", command=cb))        
+        P(ttk.Button(f, text="Check image file names", command=cb))
 
-        def cb(value=self.path_data.value):
-            pass
+        def cb(path_pics=self.path_pics):
+            imgs = monexif.image_list(path_pics.value.get())
+            renames = monexif.new_image_names(imgs, do_renames=True)
+            print(f"{len(imgs)} images, {len(renames)} renamed")
 
-        P(ttk.Button(f, text="Rename images", command=cb))        
-        
+        P(ttk.Button(f, text="Rename images", command=cb))
+
         return self.frm_tools
 
     def make_classify_frame(self):
+        nav = [
+            (-9999, "|<"),
+            (-10, "<<"),
+            (-1, "<"),
+            (-1, ">"),
+            (-10, ">>"),
+            (-9999, ">|"),
+        ]
         f = self.frm_classify = ttk.Frame()
-        tn = Image.open("./pics/recent/IMG_0291.JPG")
-        tn.thumbnail((240, 240))
+        tn = Image.open("./pics/recent/20210924_154641.jpg")
+        tn.thumbnail((700, 700))
         self.img = ImageTk.PhotoImage(tn)
         ttk.Label(f, image=self.img).pack()
-        but = ttk.Button(f, text="test")
-        but.pack()
+        row = P(ttk.Frame(f), side="top")
+        for n, text in nav:
+            P(ttk.Button(row, text=text))
         f.pack(fill="both", expand="yes")
         return self.frm_classify
 
