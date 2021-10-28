@@ -20,26 +20,61 @@ def create_data_file(path: str) -> None:
     wb.save(path)
 
 
-def insert_row(con, fields: list[str], row: list) -> None:
+def insert_row(con, fields: list[str], row: list = None) -> None:
+    if row is None:  # dict input
+        row = list(fields.values())
+        fields = list(fields)
     sql = "insert into imgdata (%s)" % ",".join(fields) + "values (%s)" % ",".join(
         "?" * len(fields)
     )
+    con.execute(sql, row)
 
 
-def xlsx_to_sqlite(xlsx_path: str, sqlite_path) -> None:
+def xlsx_to_sqlite(xlsx_path: str, sqlite_path) -> object:
     """Convert .xlsx to .db, *OVERWRITING* existing imgdata table."""
-    fields = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
+    field_defs = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
+    field_type = {k: v["type"] for k, v in field_defs["fields"].items()}
     wb = load_workbook(xlsx_path)
     ws = wb.active
-    field_type = {k: v["type"] for k, v in fields["fields"].items()}
-    fields = [cell.value for cell in ws[0 + 1]]
+    rows = iter(ws)
+    fields = [cell.value for cell in next(rows)]
     sql = [field + " " + field_type.get(field, "text") for field in fields]
     sql = "create table imgdata (\n" + ",\n".join(sql) + "\n)"
     con = sqlite3.connect(sqlite_path)
     con.execute("drop table if exists imgdata")
     con.execute(sql)
-    for row in ws[1 + 1 :]:
-        insert_row(con, fields, row)
+    for row in rows:
+        insert_row(con, fields, [i.value for i in row])
+    return con
+
+
+def sqlite_to_xlsx(con, xlsx_path: str) -> None:
+    wb = load_workbook(xlsx_path)
+    ws = wb.active
+    rows = iter(ws)
+    fields = [cell.value for cell in next(rows)]
+    ws.delete_rows(2, ws.max_row)
+    sql = "select " + ",".join(fields) + " from imgdata"
+    res = con.execute(sql)
+    for row in res:
+        ws.append(row)
+    wb.save(xlsx_path)
+
+
+def add_images(con, paths: list[str]) -> int:
+    for path in paths:
+        res = con.execute("select * from imgdata where image_path = ?", [path])
+        if list(res):
+            continue
+        exif = read_exif(path)
+        path = Path(path)
+        row = dict(
+            image_name=path.name,
+            image_path=str(path),
+            image_bytes=len(path.read_bytes()),
+            image_time=exif["datetime_original"],
+        )
+        insert_row(con, row)
 
 
 def image_list(path: str) -> list[str]:
@@ -55,7 +90,10 @@ def image_list(path: str) -> list[str]:
     for transform, extension in product(transforms, ("jpg", "png", "jpeg", "gif")):
         ext = transform(extension)
         image_paths.extend(
-            [str(i.relative_to(Path.cwd())) for i in Path(path).rglob(f"*.{ext}")]
+            [
+                str(i.resolve(strict=True).relative_to(Path.cwd()))
+                for i in Path(path).rglob(f"*.{ext}")
+            ]
         )
     return image_paths
 
@@ -94,5 +132,7 @@ def new_image_names(paths: list[str], do_renames: bool = False) -> list[(str, st
 if __name__ == "__main__":
     # print(image_list("pics"))
     # create_data_file("test.xlsx")
-    # xlsx_to_sqlite("test.xlsx", "test.db")
-    print(new_image_names(image_list("pics")))
+    con = xlsx_to_sqlite("test.xlsx", ":memory:")
+    add_images(con, image_list("pics"))
+    sqlite_to_xlsx(con, "test.xlsx")
+    # print(new_image_names(image_list("pics")))
