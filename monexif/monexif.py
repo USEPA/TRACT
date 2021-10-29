@@ -71,7 +71,6 @@ def add_images(con, paths: list[str]) -> int:
         exif = read_exif(path)
         path = Path(path)
         data = path.read_bytes()
-        print(exif)
         row = dict(
             image_name=path.name,
             image_path=str(path),

@@ -49,17 +49,32 @@ class MonExifUI:
 
     def __init__(self):
 
+        self.images = []  # list of images in time order
+        self.image_i = 0  # current image index
+        self.con = None  # DB connection
+        # switch print() to console widget
         self.stdout = sys.stdout
         self.stderr = sys.stderr
         sys.stdout = self
         sys.stderr = self
-        self.con = None
+        # Tk setup
         self.root = tk.Tk()
         self.style = ttk.Style()
-        self.initialize()
+        self.initialize()  # build UI
         self.root.mainloop()
 
+    def update_images(self):
+        """Loads list of image paths by date order"""
+        self.images = [
+            i[0]
+            for i in self.con.execute(
+                "select image_path from imgdata order by image_time asc"
+            )
+        ]
+
     def write(self, text):
+        self.stdout.write(text)
+        self.stdout.write("\n")
         # self.console.configure(state=tk.NORMAL)
         self.console.insert(tk.END, text)
         # self.console.configure(state=tk.DISABLED)
@@ -77,11 +92,12 @@ class MonExifUI:
             pad=6,
             side="top",
         )
-        self.nb.add(self.make_setup_frame(), text="File")
-        self.nb.add(self.make_tools_frame(), text="Tools")
-        self.nb.add(self.make_classify_frame(), text="Classify")
 
+        # create this first so output to console works
         self.console = P(tk.Text(stack), pad=6, side="top")
+        self.nb.add(self.make_classify_frame(), text="Classify")
+        self.nb.add(self.make_setup_frame(), text="File")
+        # self.nb.add(self.make_tools_frame(), text="Tools")
         stack.add(self.nb)
         stack.add(self.console)
 
@@ -96,13 +112,15 @@ class MonExifUI:
             path = self.path_data.value.get()
             print(f"Loading {path}")
             self.con = monexif.xlsx_to_sqlite(path, SQLPATH)
-            assert self.con
-            print("Data loaded")
-
+            self.update_images()
+            print(f"Data loaded, {len(self.images)} records")
 
         self.path_data = P(
             make_requester(f, "Data file", "open", callback=cb_load), **pad
         )
+        if len(sys.argv) > 1:
+            self.path_data.value.set(sys.argv[1])
+            cb_load(self)
 
         def cb(value=self.path_data.value):
             text = filedialog.asksaveasfilename()
@@ -119,6 +137,19 @@ class MonExifUI:
 
         P(ttk.Button(f, text="Check for new images", command=cb), **pad)
 
+        def cb(path_pics=self.path_pics):
+            imgs = monexif.image_list(path_pics.value.get())
+            renames = monexif.new_image_names(imgs)
+            print(f"{len(imgs)} images, {len(renames)} need renaming")
+
+        P(ttk.Button(f, text="Check image file names", command=cb), **pad)
+
+        def cb(path_pics=self.path_pics):
+            imgs = monexif.image_list(path_pics.value.get())
+            renames = monexif.new_image_names(imgs, do_renames=True)
+            print(f"{len(imgs)} images, {len(renames)} renamed")
+
+        P(ttk.Button(f, text="Rename images", command=cb), **pad)
         def cb(self=self):
             monexif.load_new(self.con, self.path_pics.value.get())
 
@@ -151,24 +182,55 @@ class MonExifUI:
         return self.frm_tools
 
     def make_classify_frame(self):
+        f = self.frm_classify = ttk.Frame()
+
+        def cb(self=self):
+            cur = self.con.cursor()
+            cur.execute(
+                "select * from imgdata where image_path = ?",
+                [self.frm_classify.view.path],
+            )
+            rec = {k[0]: v for k, v in zip(cur.description, next(cur))}
+            print(rec["image_path"], rec["image_time"])
+
+        f.view = P(self.make_browser(f, command=cb), side="top")
+        return f
+
+    def make_browser(self, outer, command=None):
         nav = [
             (-9999, "|<"),
+            (-100, "<<<"),
             (-10, "<<"),
             (-1, "<"),
-            (-1, ">"),
-            (-10, ">>"),
-            (-9999, ">|"),
+            (+1, ">"),
+            (+10, ">>"),
+            (+100, ">>>"),
+            (+9999, ">|"),
         ]
-        f = self.frm_classify = ttk.Frame()
-        tn = Image.open("./pics/recent/20210924_154641.jpg")
-        tn.thumbnail((700, 700))
-        self.img = ImageTk.PhotoImage(tn)
-        ttk.Label(f, image=self.img).pack()
-        row = P(ttk.Frame(f), side="top")
+        view = ttk.Frame(outer)
+        view.img = P(ttk.Label(view, text="Image"), side="top")
+        view.path = None
+        row = P(ttk.Frame(view), side="top")
         for n, text in nav:
-            P(ttk.Button(row, text=text))
-        f.pack(fill="both", expand="yes")
-        return self.frm_classify
+
+            def cb(self=self, view=view, n=n, command=command):
+                if view.path is None:
+                    view.path = self.images[0]
+                else:
+                    idx = self.images.index(view.path)
+                    idx += n
+                    idx = max(0, min(idx, len(self.images) - 1))
+                    view.path = self.images[idx]
+                tn = Image.open(view.path)
+                tn.thumbnail((700, 700))
+                view.pimg = ImageTk.PhotoImage(tn)
+                view.img.configure(image=view.pimg)
+                if command:
+                    command()
+
+            P(ttk.Button(row, text=text, command=cb))
+        view.pack(fill="both", expand="yes")
+        return view
 
 
 MonExifUI()
