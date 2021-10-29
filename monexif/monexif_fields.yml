@@ -21,9 +21,15 @@ fields:
     type: text
   image_path:
     type: text
+  image_w:
+    type: int
+  image_h:
+    type: int
   image_bytes:
     type: integer
   camera_id:
+    type: text
+  image_id:
     type: text
   image_hash:
     type: text

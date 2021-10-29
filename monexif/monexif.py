@@ -1,7 +1,9 @@
 import platform
 import sqlite3
+from hashlib import sha256
 from itertools import product
 from pathlib import Path
+from uuid import uuid4
 
 import exif
 import yaml
@@ -68,11 +70,17 @@ def add_images(con, paths: list[str]) -> int:
             continue
         exif = read_exif(path)
         path = Path(path)
+        data = path.read_bytes()
+        print(exif)
         row = dict(
             image_name=path.name,
             image_path=str(path),
-            image_bytes=len(path.read_bytes()),
+            image_bytes=len(data),
             image_time=exif["datetime_original"],
+            image_w=exif["pixel_x_dimension"],
+            image_h=exif["pixel_y_dimension"],
+            image_hash=sha256(data).hexdigest(),
+            image_id=uuid4().hex,
         )
         insert_row(con, row)
 
