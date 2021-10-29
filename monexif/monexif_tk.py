@@ -1,11 +1,14 @@
+import sys
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog
 
-import monexif
 from PIL import Image, ImageTk
 
+import monexif
+
 SQLPATH = ":memory:"
+
 
 def P(x, **kwargs):
     pack_kwargs = dict(padx=2, pady=2, side="left")
@@ -18,24 +21,25 @@ def P(x, **kwargs):
     return x
 
 
-def make_requester(outer, label, kind):
+def make_requester(outer, label, kind, callback=None):
     line = ttk.Frame(outer)
     func = {
         "dir": filedialog.askdirectory,
         "open": filedialog.askopenfilename,
         "save": filedialog.asksaveasfilename,
     }[kind]
-    line.button = P(ttk.Button(line, text="..", width=3), side="right")
     line.value = tk.StringVar()
-    P(ttk.Entry(line, width=30, textvariable=line.value), side="right")
 
-    def cb(event, func=func, entry=line.value):
+    def cb(func=func, entry=line.value, callback=callback):
         text = func()
         if text:
             entry.set(text)
+            if callback is not None:
+                callback()
 
-    line.button.bind("<ButtonRelease-1>", cb)
-    line.button.bind
+    line.button = P(ttk.Button(line, text="..", width=3, command=cb), side="right")
+    P(ttk.Entry(line, width=30, textvariable=line.value), side="right")
+    # line.button.bind("<ButtonRelease-1>", cb)
     P(ttk.Label(line, text=label, width=15, anchor="e"), side="right")
     return line
 
@@ -45,10 +49,22 @@ class MonExifUI:
 
     def __init__(self):
 
+        self.stdout = sys.stdout
+        self.stderr = sys.stderr
+        sys.stdout = self
+        sys.stderr = self
+        self.con = None
         self.root = tk.Tk()
         self.style = ttk.Style()
         self.initialize()
         self.root.mainloop()
+
+    def write(self, text):
+        # self.console.configure(state=tk.NORMAL)
+        self.console.insert(tk.END, text)
+        # self.console.configure(state=tk.DISABLED)
+        self.console.see(tk.END)
+        self.root.update()
 
     def initialize(self):
         """layout gui, set up callbacks"""
@@ -61,33 +77,57 @@ class MonExifUI:
             pad=6,
             side="top",
         )
-        self.nb.add(self.make_classify_frame(), text="Classify")
-        self.nb.add(self.make_setup_frame(), text="Setup")
+        self.nb.add(self.make_setup_frame(), text="File")
         self.nb.add(self.make_tools_frame(), text="Tools")
+        self.nb.add(self.make_classify_frame(), text="Classify")
 
-        self.console = tk.StringVar()
-        console = P(
-            ttk.Label(stack, textvariable=self.console, anchor="nw"),
-            pad=6,
-            side="top",
-        )
+        self.console = P(tk.Text(stack), pad=6, side="top")
         stack.add(self.nb)
-        stack.add(console)
-        self.console.set("test\nhere")
+        stack.add(self.console)
+
+        print("Init. complete.")
 
     def make_setup_frame(self):
         pad = dict(anchor="nw", side="top")
         f = self.frm_setup = P(ttk.Frame(self.nb), **pad)
         self.path_pics = P(make_requester(f, "Image folder", "dir"), **pad)
-        self.path_data = P(make_requester(f, "Data file", "open"), **pad)
+
+        def cb_load(self=self):
+            path = self.path_data.value.get()
+            print(f"Loading {path}")
+            self.con = monexif.xlsx_to_sqlite(path, SQLPATH)
+            assert self.con
+            print("Data loaded")
+
+
+        self.path_data = P(
+            make_requester(f, "Data file", "open", callback=cb_load), **pad
+        )
 
         def cb(value=self.path_data.value):
             text = filedialog.asksaveasfilename()
             if text:
-                value.set(text)
+                self.path_data.value.set(text)
+                print(f"Creating {text}")
                 monexif.create_data_file(text)
+                cb_load(self)
 
         P(ttk.Button(f, text="Create new data file", command=cb), **pad)
+
+        def cb(self=self):
+            monexif.check_new(self.con, self.path_pics.value.get())
+
+        P(ttk.Button(f, text="Check for new images", command=cb), **pad)
+
+        def cb(self=self):
+            monexif.load_new(self.con, self.path_pics.value.get())
+
+        P(ttk.Button(f, text="Load new images", command=cb), **pad)
+
+        def cb(self=self):
+            monexif.sqlite_to_xlsx(self.con, self.path_data.value.get())
+
+        P(ttk.Button(f, text="Save data to file", command=cb), **pad)
 
         return self.frm_setup
 

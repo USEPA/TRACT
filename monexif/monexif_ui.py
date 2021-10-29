@@ -1,3 +1,6 @@
+"""
+Early prototype using guiFlds - see monexif_tk.py instead.
+"""
 from guiFlds.guiFlds import guiFlds
 from guiFlds.guiFlds_ttk import guiFldsTTK
 

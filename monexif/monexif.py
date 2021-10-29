@@ -129,6 +129,25 @@ def new_image_names(paths: list[str], do_renames: bool = False) -> list[(str, st
     return renames
 
 
+def check_new(con: object, img_path: str):
+    img_paths = set(image_list(img_path))
+    img_recs = set(map(lambda x: x[0], con.execute("select image_path from imgdata")))
+    print("")
+    print(f"{len(img_paths)} images in folder.")
+    print(f"{len(img_recs)} records in data.")
+    print(f"{len(img_paths-img_recs)} in folder only.")
+    print(f"{len(img_recs-img_paths)} in data only.")
+    print(f"{len(img_recs&img_paths)} in both.")
+
+
+def load_new(con: object, img_path: str):
+    img_paths = set(image_list(img_path))
+    img_recs = set(map(lambda x: x[0], con.execute("select image_path from imgdata")))
+    new = img_paths - img_recs
+    print(f"Adding {len(img_paths-img_recs)} images.")
+    add_images(con, new)
+
+
 if __name__ == "__main__":
     # print(image_list("pics"))
     # create_data_file("test.xlsx")
