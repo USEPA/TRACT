@@ -1,14 +1,18 @@
 fields:
   image_time:
     type: datetime
+    show: true
   people_n:
-      type: integer
+    input: true
+    type: integer
   direction:
+    input: true
     type: text
     values:
       - north
       - south
   actitivity:
+    input: true
     type: text
     values:
       - walking
@@ -16,10 +20,16 @@ fields:
       - pet-walking
       - biking
   related:
+    input: true
     type: text
+  related_time:
+    show: true
+    type: int
   image_name:
+    show: true
     type: text
   image_path:
+    show: true
     type: text
   image_w:
     type: int

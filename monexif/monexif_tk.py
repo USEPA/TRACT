@@ -1,12 +1,15 @@
 import sys
 import tkinter as tk
 import tkinter.ttk as ttk
+import os
+
 from tkinter import filedialog
 
 from PIL import Image, ImageTk
 
 import monexif
 
+DEVMODE = os.environ.get("MONEXIF_DEVMODE")
 SQLPATH = ":memory:"
 
 
@@ -56,7 +59,8 @@ class MonExifUI:
         self.stdout = sys.stdout
         self.stderr = sys.stderr
         sys.stdout = self
-        sys.stderr = self
+        if DEVMODE:
+            sys.stderr = self
         # Tk setup
         self.root = tk.Tk()
         self.style = ttk.Style()
@@ -95,9 +99,11 @@ class MonExifUI:
 
         # create this first so output to console works
         self.console = P(tk.Text(stack), pad=6, side="top")
-        self.nb.add(self.make_classify_frame(), text="Classify")
         self.nb.add(self.make_setup_frame(), text="File")
+        self.nb.add(self.make_classify_frame(), text="Classify")
         # self.nb.add(self.make_tools_frame(), text="Tools")
+        if DEVMODE:
+            self.nb.select(1)
         stack.add(self.nb)
         stack.add(self.console)
 
@@ -138,25 +144,31 @@ class MonExifUI:
         P(ttk.Button(f, text="Check for new images", command=cb), **pad)
 
         def cb(path_pics=self.path_pics):
-            imgs = monexif.image_list(path_pics.value.get())
-            renames = monexif.new_image_names(imgs)
+            path = path_pics.value.get()
+            imgs = monexif.image_list(path)
+            renames = monexif.new_image_names(path, imgs)
             print(f"{len(imgs)} images, {len(renames)} need renaming")
 
         P(ttk.Button(f, text="Check image file names", command=cb), **pad)
 
         def cb(path_pics=self.path_pics):
-            imgs = monexif.image_list(path_pics.value.get())
-            renames = monexif.new_image_names(imgs, do_renames=True)
+            path = path_pics.value.get()
+            imgs = monexif.image_list(path)
+            renames = monexif.new_image_names(path, imgs, do_renames=True)
             print(f"{len(imgs)} images, {len(renames)} renamed")
 
         P(ttk.Button(f, text="Rename images", command=cb), **pad)
+
         def cb(self=self):
             monexif.load_new(self.con, self.path_pics.value.get())
+            self.update_images()
 
         P(ttk.Button(f, text="Load new images", command=cb), **pad)
 
         def cb(self=self):
-            monexif.sqlite_to_xlsx(self.con, self.path_data.value.get())
+            path = self.path_data.value.get()
+            monexif.sqlite_to_xlsx(self.con, path)
+            print(f"Saved {path}")
 
         P(ttk.Button(f, text="Save data to file", command=cb), **pad)
 
@@ -166,15 +178,17 @@ class MonExifUI:
         f = self.frm_tools = ttk.Frame()
 
         def cb(path_pics=self.path_pics):
-            imgs = monexif.image_list(path_pics.value.get())
-            renames = monexif.new_image_names(imgs)
+            path = path_pics.value.get()
+            imgs = monexif.image_list(path)
+            renames = monexif.new_image_names(path, imgs)
             print(f"{len(imgs)} images, {len(renames)} need renaming")
 
         P(ttk.Button(f, text="Check image file names", command=cb))
 
         def cb(path_pics=self.path_pics):
-            imgs = monexif.image_list(path_pics.value.get())
-            renames = monexif.new_image_names(imgs, do_renames=True)
+            path = path_pics.value.get()
+            imgs = monexif.image_list(path)
+            renames = monexif.new_image_names(path, imgs, do_renames=True)
             print(f"{len(imgs)} images, {len(renames)} renamed")
 
         P(ttk.Button(f, text="Rename images", command=cb))
@@ -190,21 +204,33 @@ class MonExifUI:
                 "select * from imgdata where image_path = ?",
                 [self.frm_classify.view.path],
             )
-            rec = {k[0]: v for k, v in zip(cur.description, next(cur))}
-            print(rec["image_path"], rec["image_time"])
+            data = {k[0]: v for k, v in zip(cur.description, next(cur))}
+            print(data["image_path"], data["image_time"])
+            rec = self.frm_classify.rec
+            for item in rec.winfo_children():
+                item.destroy()
+            for field in monexif.field_defs()["fields"].values():
+                if field.get("show"):
+                    P(ttk.Label(rec, text=data[field['name']]), side="top", anchor="nw")
 
-        f.view = P(self.make_browser(f, command=cb), side="top")
+        f.input = ttk.Frame()
+
+        f.view = P(self.make_browser(f, command=cb), side="right")
+        f.rec = P(ttk.Frame(f), side="left")
+
         return f
 
     def make_browser(self, outer, command=None):
         nav = [
             (-9999, "|<"),
-            (-100, "<<<"),
-            (-10, "<<"),
+            (-1000, "≪≪"),
+            (-100, "⋘"),
+            (-10, "≪"),
             (-1, "<"),
             (+1, ">"),
-            (+10, ">>"),
-            (+100, ">>>"),
+            (+10, "≫"),
+            (+100, "⋙"),
+            (+1000, "≫≫"),
             (+9999, ">|"),
         ]
         view = ttk.Frame(outer)
@@ -228,7 +254,7 @@ class MonExifUI:
                 if command:
                     command()
 
-            P(ttk.Button(row, text=text, command=cb))
+            P(ttk.Button(row, text=text, command=cb, width=4))
         view.pack(fill="both", expand="yes")
         return view
 

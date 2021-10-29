@@ -32,10 +32,16 @@ def insert_row(con, fields: list[str], row: list = None) -> None:
     con.execute(sql, row)
 
 
+def field_defs():
+    defs = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
+    for k, v in defs["fields"].items():
+        v["name"] = k
+    return defs
+
+
 def xlsx_to_sqlite(xlsx_path: str, sqlite_path) -> object:
     """Convert .xlsx to .db, *OVERWRITING* existing imgdata table."""
-    field_defs = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
-    field_type = {k: v["type"] for k, v in field_defs["fields"].items()}
+    field_type = {k: v["type"] for k, v in field_defs()["fields"].items()}
     wb = load_workbook(xlsx_path)
     ws = wb.active
     rows = iter(ws)
@@ -63,17 +69,18 @@ def sqlite_to_xlsx(con, xlsx_path: str) -> None:
     wb.save(xlsx_path)
 
 
-def add_images(con, paths: list[str]) -> int:
+def add_images(con, basedir: str, paths: list[str]) -> int:
     for path in paths:
         res = con.execute("select * from imgdata where image_path = ?", [path])
         if list(res):
+            print(f"Skipping existing {path}.")
             continue
-        exif = read_exif(path)
-        path = Path(path)
-        data = path.read_bytes()
+        fullpath = Path(basedir)/path
+        exif = read_exif(fullpath)
+        data = fullpath.read_bytes()
         row = dict(
-            image_name=path.name,
-            image_path=str(path),
+            image_name=fullpath.name,
+            image_path=path,
             image_bytes=len(data),
             image_time=exif["datetime_original"],
             image_w=exif["pixel_x_dimension"],
@@ -98,7 +105,7 @@ def image_list(path: str) -> list[str]:
         ext = transform(extension)
         image_paths.extend(
             [
-                str(i.resolve(strict=True).relative_to(Path.cwd()))
+                str(i.resolve(strict=True).relative_to(path))
                 for i in Path(path).rglob(f"*.{ext}")
             ]
         )
@@ -123,16 +130,16 @@ def image_time_filename(exif: dict) -> str:
     return exif["datetime_original"].replace(":", "").replace(" ", "_") + ".jpg"
 
 
-def new_image_names(paths: list[str], do_renames: bool = False) -> list[(str, str)]:
+def new_image_names(basedir: str, paths: list[str], do_renames: bool = False) -> list[(str, str)]:
     renames = []
     for img_path in paths:
-        exif = read_exif(img_path)
+        exif = read_exif(Path(basedir)/img_path)
         name = image_time_filename(exif)
         if Path(img_path).name != name:
             new_path = Path(img_path).with_name(name)
             renames.append((img_path, new_path))
             if do_renames:
-                Path(img_path).rename(new_path)
+                (Path(basedir)/img_path).rename(new_path)
     return renames
 
 
@@ -152,7 +159,7 @@ def load_new(con: object, img_path: str):
     img_recs = set(map(lambda x: x[0], con.execute("select image_path from imgdata")))
     new = img_paths - img_recs
     print(f"Adding {len(img_paths-img_recs)} images.")
-    add_images(con, new)
+    add_images(con, img_path, new)
 
 
 if __name__ == "__main__":
