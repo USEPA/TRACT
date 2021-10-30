@@ -115,6 +115,9 @@ class MonExifUI:
         stack.add(f)
 
         print("Init. complete.")
+        print("[ ] set related reverse link")
+        print("[ ] set related time (x 2)")
+        print("[ ] set related update main to avoid reset on second select")
 
     def make_setup_frame(self):
         pad = dict(anchor="nw", side="top")
@@ -235,7 +238,9 @@ class MonExifUI:
         if field.get("show"):
             P(ttk.Label(outer, text=value), side="top", anchor="nw")
         elif field.get("input"):
-            if field.get("values"):
+            if field["name"] == "related":
+                P(self.make_related(outer, field, data), side="top", anchor="nw")
+            elif field.get("values"):
 
                 input = P(
                     ttk.Combobox(outer, values=field["values"]),
@@ -254,6 +259,69 @@ class MonExifUI:
                 if value in field["values"]:
                     input.set(field["values"].index(value))
 
+    def make_related(self, outer, field, data):
+        f = P(ttk.Frame(outer))
+        # P(ttk.Label(f, text=data["related"]), side="top")
+
+        def cb():
+            top = tk.Toplevel(self.root)
+            browser = P(self.make_browser(top), side="top", fill="x")
+            path = None
+            if data['related']:
+                res = self.con.execute(
+                    "select image_path from imgdata where image_id=?", [data['related']]
+                )
+                try:
+                    path = next(res)[0]
+                except StopIteration:
+                    pass
+            if path is None:
+                path = data["image_path"]
+            browser.path = path
+            browser.show(browser)
+
+            def cb(browser=browser, path=data["image_path"]):
+                browser.path = path
+                browser.show(browser)
+
+            P(
+                ttk.Button(top, text="Original", command=cb),
+                side="left",
+                fill="x",
+                expand="y",
+            )
+
+            def cb(data=data, browser=browser, top=top, self=self):
+                res = self.con.execute(
+                    "select image_id from imgdata where image_path=?", [browser.path]
+                )
+                image_id = next(res)[0]
+                self.con.execute(
+                    "update imgdata set related=? where image_path=?",
+                    [image_id, data["image_path"]],
+                )
+                top.destroy()
+
+            P(
+                ttk.Button(top, text="Select", command=cb),
+                side="left",
+                fill="x",
+                expand="y",
+            )
+
+            def cb(top=top):
+                top.destroy()
+
+            P(
+                ttk.Button(top, text="Cancel", command=cb),
+                side="left",
+                fill="x",
+                expand="y",
+            )
+
+        P(ttk.Button(f, text="Select", command=cb), side="top")
+        return f
+
     def make_browser(self, outer, command=None):
         nav = [
             (-9999, "|<"),
@@ -271,6 +339,15 @@ class MonExifUI:
         view.img = P(ttk.Label(view, text="Image"), side="top")
         view.path = None
         row = P(ttk.Frame(view), side="top")
+
+        def show(view):
+            tn = Image.open(view.path)
+            tn.thumbnail((700, 700))
+            view.pimg = ImageTk.PhotoImage(tn)
+            view.img.configure(image=view.pimg)
+
+        view.show = show
+
         for n, text in nav:
 
             def cb(self=self, view=view, n=n, command=command):
@@ -281,10 +358,7 @@ class MonExifUI:
                     idx += n
                     idx = max(0, min(idx, len(self.images) - 1))
                     view.path = self.images[idx]
-                tn = Image.open(view.path)
-                tn.thumbnail((700, 700))
-                view.pimg = ImageTk.PhotoImage(tn)
-                view.img.configure(image=view.pimg)
+                view.show(view)
                 if command:
                     command()
 
