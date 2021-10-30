@@ -1,8 +1,7 @@
+import os
 import sys
 import tkinter as tk
 import tkinter.ttk as ttk
-import os
-
 from tkinter import filedialog
 
 from PIL import Image, ImageTk
@@ -98,14 +97,22 @@ class MonExifUI:
         )
 
         # create this first so output to console works
-        self.console = P(tk.Text(stack), pad=6, side="top")
+        f = ttk.Frame()
+        self.console = P(tk.Text(f), side="right", expand="yes", fill="both")
         self.nb.add(self.make_setup_frame(), text="File")
         self.nb.add(self.make_classify_frame(), text="Classify")
         # self.nb.add(self.make_tools_frame(), text="Tools")
         if DEVMODE:
             self.nb.select(1)
         stack.add(self.nb)
-        stack.add(self.console)
+
+        def cb(self=self):
+            path = self.path_data.value.get()
+            monexif.sqlite_to_xlsx(self.con, path)
+            print(f"Saved {path}")
+
+        P(ttk.Button(f, text="Save data to file", command=cb), anchor="nw", side="left")
+        stack.add(f)
 
         print("Init. complete.")
 
@@ -175,6 +182,7 @@ class MonExifUI:
         return self.frm_setup
 
     def make_tools_frame(self):
+        """Not used"""
         f = self.frm_tools = ttk.Frame()
 
         def cb(path_pics=self.path_pics):
@@ -210,8 +218,7 @@ class MonExifUI:
             for item in rec.winfo_children():
                 item.destroy()
             for field in monexif.field_defs()["fields"].values():
-                if field.get("show"):
-                    P(ttk.Label(rec, text=data[field['name']]), side="top", anchor="nw")
+                self.render(rec, field, data)
 
         f.input = ttk.Frame()
 
@@ -219,6 +226,33 @@ class MonExifUI:
         f.rec = P(ttk.Frame(f), side="left")
 
         return f
+
+    def render(self, outer, field, data):
+        if not field.get("show") and not field.get("input"):
+            return
+        P(ttk.Label(outer, text=field["name"]), side="top", anchor="nw")
+        value = data.get(field["name"])
+        if field.get("show"):
+            P(ttk.Label(outer, text=value), side="top", anchor="nw")
+        elif field.get("input"):
+            if field.get("values"):
+
+                input = P(
+                    ttk.Combobox(outer, values=field["values"]),
+                    side="top",
+                    anchor="nw",
+                )
+
+                def cb(event, self=self, data=data, key=field["name"], input=input):
+                    print(key, input.get())
+                    self.con.execute(
+                        f"update imgdata set {key} = ? where image_path = ?",
+                        [input.get(), data["image_path"]],
+                    )
+
+                input.bind("<<ComboboxSelected>>", cb)
+                if value in field["values"]:
+                    input.set(field["values"].index(value))
 
     def make_browser(self, outer, command=None):
         nav = [

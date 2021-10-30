@@ -5,12 +5,14 @@ fields:
   people_n:
     input: true
     type: integer
+    values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
   direction:
     input: true
     type: text
     values:
       - north
       - south
+      - N/A
   actitivity:
     input: true
     type: text
@@ -19,6 +21,7 @@ fields:
       - skating / rollerblading
       - pet-walking
       - biking
+      - N/A
   related:
     input: true
     type: text
