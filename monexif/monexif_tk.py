@@ -2,6 +2,7 @@ import os
 import sys
 import tkinter as tk
 import tkinter.ttk as ttk
+from pathlib import Path
 from tkinter import filedialog
 
 from PIL import Image, ImageTk
@@ -322,13 +323,22 @@ class MonExifUI:
                 "select image_path from imgdata where image_id = ?", [data["related"]]
             )
             path = next(res)[0]
-            tn = Image.open(path)
+            tn = Image.open(self.absolute_path(path))
             tn.thumbnail((200, 200))
             f.pimg = ImageTk.PhotoImage(tn)
             P(ttk.Label(f, image=f.pimg), side="top")
 
         P(ttk.Button(f, width=25, text="Select or view", command=cb), side="top")
         return f
+
+    def relative_path(self, path):
+        if not Path(path).is_absolute():
+            #  .relative_to requires two absolute paths
+            path = self.absolute_path(path)
+        return str(Path(path).relative_to(self.path_pics.value.get()))
+        
+    def absolute_path(self, path):
+        return str(Path(self.path_pics.value.get())/path)
 
     def make_browser(self, outer, command=None):
         nav = [
@@ -348,8 +358,8 @@ class MonExifUI:
         view.path = None
         row = P(ttk.Frame(view), side="top")
 
-        def show(view):
-            tn = Image.open(view.path)
+        def show(view, self=self):
+            tn = Image.open(self.absolute_path(view.path))
             tn.thumbnail((700, 700))
             view.pimg = ImageTk.PhotoImage(tn)
             view.img.configure(image=view.pimg)
