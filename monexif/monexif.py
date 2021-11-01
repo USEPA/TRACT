@@ -141,7 +141,7 @@ def new_image_names(
             new_path = Path(img_path).with_name(name)
             renames.append((img_path, new_path))
             if do_renames:
-                (Path(basedir) / img_path).rename(new_path)
+                (Path(basedir) / img_path).rename(Path(basedir) / new_path)
     return renames
 
 

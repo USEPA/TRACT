@@ -22,6 +22,9 @@ fields:
       - pet-walking
       - biking
       - N/A
+  temperature_f:
+    input: true
+    type: int
   related:
     input: true
     type: text

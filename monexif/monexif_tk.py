@@ -12,7 +12,19 @@ import monexif
 DEVMODE = os.environ.get("MONEXIF_DEVMODE")
 SQLPATH = ":memory:"
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
 
+    return os.path.join(base_path, relative_path)
+    
+print(resource_path(""))
+print(os.listdir(resource_path("")))
+    
 def P(x, **kwargs):
     pack_kwargs = dict(padx=2, pady=2, side="left")
     if "pad" in kwargs:
@@ -246,7 +258,6 @@ class MonExifUI:
             if field["name"] == "related":
                 P(self.make_related(outer, field, data), side="top", anchor="nw")
             elif field.get("values"):
-
                 input = P(
                     ttk.Combobox(outer, values=field["values"]),
                     side="top",
@@ -255,6 +266,7 @@ class MonExifUI:
 
                 def cb(event, self=self, data=data, key=field["name"], input=input):
                     print(key, input.get())
+                    print(self.record_temp.get())
                     self.con.execute(
                         f"update imgdata set {key} = ? where image_path = ?",
                         [input.get(), data["image_path"]],
@@ -262,8 +274,27 @@ class MonExifUI:
 
                 input.bind("<<ComboboxSelected>>", cb)
                 if value in field["values"]:
-                    input.set(field["values"].index(value))
-
+                    input.set(value)
+            else:
+                self.record_temp = content = tk.StringVar()
+                if value is not None:
+                    content.set(str(value))
+                def cb(*args, self=self, data=data, key=field["name"], input=content):
+                    print(key, input.get())
+                    self.con.execute(
+                        f"update imgdata set {key} = ? where image_path = ?",
+                        [input.get(), data["image_path"]],
+                    )
+                    return True
+                input = P(
+                    ttk.Entry(outer),
+                    side="top",
+                    anchor="nw",
+                )
+                input["textvariable"]=content
+                # input.bind("<<KeyRelease>>", cb)
+                content.trace_add("write", cb)                
+                
     def make_related(self, outer, field, data):
         f = P(ttk.Frame(outer))
         # P(ttk.Label(f, text=data["related"]), side="top")
