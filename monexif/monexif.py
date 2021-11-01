@@ -75,14 +75,14 @@ def add_images(con, basedir: str, paths: list[str]) -> int:
         if list(res):
             print(f"Skipping existing {path}.")
             continue
-        fullpath = Path(basedir)/path
+        fullpath = Path(basedir) / path
         exif = read_exif(fullpath)
         data = fullpath.read_bytes()
         row = dict(
             image_name=fullpath.name,
             image_path=path,
             image_bytes=len(data),
-            image_time=exif["datetime_original"],
+            image_time=exif["datetime_original"].replace(":", "/", 2),
             image_w=exif["pixel_x_dimension"],
             image_h=exif["pixel_y_dimension"],
             image_hash=sha256(data).hexdigest(),
@@ -130,16 +130,18 @@ def image_time_filename(exif: dict) -> str:
     return exif["datetime_original"].replace(":", "").replace(" ", "_") + ".jpg"
 
 
-def new_image_names(basedir: str, paths: list[str], do_renames: bool = False) -> list[(str, str)]:
+def new_image_names(
+    basedir: str, paths: list[str], do_renames: bool = False
+) -> list[(str, str)]:
     renames = []
     for img_path in paths:
-        exif = read_exif(Path(basedir)/img_path)
+        exif = read_exif(Path(basedir) / img_path)
         name = image_time_filename(exif)
         if Path(img_path).name != name:
             new_path = Path(img_path).with_name(name)
             renames.append((img_path, new_path))
             if do_renames:
-                (Path(basedir)/img_path).rename(new_path)
+                (Path(basedir) / img_path).rename(new_path)
     return renames
 
 
@@ -160,6 +162,29 @@ def load_new(con: object, img_path: str):
     new = img_paths - img_recs
     print(f"Adding {len(img_paths-img_recs)} images.")
     add_images(con, img_path, new)
+
+
+def set_related(con: object, path0: str, path1: str) -> None:
+    cur = con.cursor()
+    # convert paths to ids for robustness, capture times too
+    id_time = list(
+        cur.execute(
+            "select image_id, image_time from imgdata where image_path in (?, ?)",
+            [path0, path1],
+        )
+    )
+    separation = abs((parse(id_time[0][1]) - parse(id_time[1][1])).total_seconds())
+    # set reciprocal relationship
+    for id0, id1, time1 in (id_time[0][0], id_time[1][0], id_time[1][1]), (
+        id_time[1][0],
+        id_time[0][0],
+        id_time[0][1],
+    ):
+        cur.execute(
+            "update imgdata set related=?, related_time=?, related_seconds=? "
+            "where image_id=?",
+            [id1, time1, separation, id0],
+        )
 
 
 if __name__ == "__main__":

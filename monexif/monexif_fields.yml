@@ -27,6 +27,9 @@ fields:
     type: text
   related_time:
     show: true
+    type: text
+  related_seconds:
+    show: true
     type: int
   image_name:
     show: true

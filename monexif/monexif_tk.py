@@ -115,14 +115,12 @@ class MonExifUI:
         stack.add(f)
 
         print("Init. complete.")
-        print("[ ] set related reverse link")
-        print("[ ] set related time (x 2)")
-        print("[ ] set related update main to avoid reset on second select")
 
     def make_setup_frame(self):
         pad = dict(anchor="nw", side="top")
         f = self.frm_setup = P(ttk.Frame(self.nb), **pad)
         self.path_pics = P(make_requester(f, "Image folder", "dir"), **pad)
+        self.path_pics.value.set("SET THIS FIRST")
 
         def cb_load(self=self):
             path = self.path_data.value.get()
@@ -137,6 +135,8 @@ class MonExifUI:
         if len(sys.argv) > 1:
             self.path_data.value.set(sys.argv[1])
             cb_load(self)
+        else:
+            self.path_data.value.set("SET THIS NEXT")
 
         def cb(value=self.path_data.value):
             text = filedialog.asksaveasfilename()
@@ -206,27 +206,31 @@ class MonExifUI:
 
         return self.frm_tools
 
+    def update_inputs(self):
+        cur = self.con.cursor()
+        cur.execute(
+            "select * from imgdata where image_path = ?",
+            [self.frm_classify.view.path],
+        )
+        data = {k[0]: v for k, v in zip(cur.description, next(cur))}
+        rec = self.frm_classify.rec
+        for item in rec.winfo_children():
+            item.destroy()
+        for field in monexif.field_defs()["fields"].values():
+            self.render(rec, field, data)
+        return data
+
     def make_classify_frame(self):
         f = self.frm_classify = ttk.Frame()
 
         def cb(self=self):
-            cur = self.con.cursor()
-            cur.execute(
-                "select * from imgdata where image_path = ?",
-                [self.frm_classify.view.path],
-            )
-            data = {k[0]: v for k, v in zip(cur.description, next(cur))}
+            data = self.update_inputs()
             print(data["image_path"], data["image_time"])
-            rec = self.frm_classify.rec
-            for item in rec.winfo_children():
-                item.destroy()
-            for field in monexif.field_defs()["fields"].values():
-                self.render(rec, field, data)
 
         f.input = ttk.Frame()
 
         f.view = P(self.make_browser(f, command=cb), side="right")
-        f.rec = P(ttk.Frame(f), side="left")
+        f.rec = P(ttk.Frame(f), side="left", anchor="nw")
 
         return f
 
@@ -267,9 +271,9 @@ class MonExifUI:
             top = tk.Toplevel(self.root)
             browser = P(self.make_browser(top), side="top", fill="x")
             path = None
-            if data['related']:
+            if data["related"]:
                 res = self.con.execute(
-                    "select image_path from imgdata where image_id=?", [data['related']]
+                    "select image_path from imgdata where image_id=?", [data["related"]]
                 )
                 try:
                     path = next(res)[0]
@@ -292,15 +296,9 @@ class MonExifUI:
             )
 
             def cb(data=data, browser=browser, top=top, self=self):
-                res = self.con.execute(
-                    "select image_id from imgdata where image_path=?", [browser.path]
-                )
-                image_id = next(res)[0]
-                self.con.execute(
-                    "update imgdata set related=? where image_path=?",
-                    [image_id, data["image_path"]],
-                )
+                monexif.set_related(self.con, browser.path, data["image_path"])
                 top.destroy()
+                self.update_inputs()
 
             P(
                 ttk.Button(top, text="Select", command=cb),
@@ -319,7 +317,17 @@ class MonExifUI:
                 expand="y",
             )
 
-        P(ttk.Button(f, text="Select", command=cb), side="top")
+        if data.get("related"):
+            res = self.con.execute(
+                "select image_path from imgdata where image_id = ?", [data["related"]]
+            )
+            path = next(res)[0]
+            tn = Image.open(path)
+            tn.thumbnail((200, 200))
+            f.pimg = ImageTk.PhotoImage(tn)
+            P(ttk.Label(f, image=f.pimg), side="top")
+
+        P(ttk.Button(f, width=25, text="Select or view", command=cb), side="top")
         return f
 
     def make_browser(self, outer, command=None):
@@ -336,7 +344,7 @@ class MonExifUI:
             (+9999, ">|"),
         ]
         view = ttk.Frame(outer)
-        view.img = P(ttk.Label(view, text="Image"), side="top")
+        view.img = P(ttk.Label(view, text="Click any arrow to start"), side="top")
         view.path = None
         row = P(ttk.Frame(view), side="top")
 
