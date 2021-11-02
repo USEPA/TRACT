@@ -46,9 +46,14 @@ fields:
     type: int
   image_bytes:
     type: integer
-  camera_id:
+  camera_deploy:
     type: text
+    input: true
+    values:
+      - EPAR3CAMOT_2021_FALL
+      - EPAR3CAMXX_2021_FALL
   image_id:
     type: text
   image_hash:
     type: text
+
