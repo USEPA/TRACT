@@ -3,7 +3,7 @@ import sys
 import tkinter as tk
 import tkinter.ttk as ttk
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 
 from PIL import Image, ImageTk
 
@@ -12,8 +12,9 @@ import monexif
 DEVMODE = os.environ.get("MONEXIF_DEVMODE")
 SQLPATH = ":memory:"
 
+
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
@@ -21,10 +22,12 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
-    
+
+
 print(resource_path(""))
 print(os.listdir(resource_path("")))
-    
+
+
 def P(x, **kwargs):
     pack_kwargs = dict(padx=2, pady=2, side="left")
     if "pad" in kwargs:
@@ -77,7 +80,14 @@ class MonExifUI:
         self.root = tk.Tk()
         self.style = ttk.Style()
         self.initialize()  # build UI
+        # bind window closing callback
+        self.root.protocol("WM_DELETE_WINDOW", self.exiting)
         self.root.mainloop()
+
+    def exiting(self):
+        message = "OK to exit losing unsaved work,\nCancel to abort and save work"
+        if messagebox.askokcancel(message, message):
+            self.root.destroy()
 
     def update_images(self):
         """Loads list of image paths by date order"""
@@ -120,14 +130,25 @@ class MonExifUI:
         stack.add(self.nb)
 
         def cb(self=self):
-            path = self.path_data.value.get()
-            monexif.sqlite_to_xlsx(self.con, path)
-            print(f"Saved {path}")
+            self.save()
 
         P(ttk.Button(f, text="Save data to file", command=cb), anchor="nw", side="left")
         stack.add(f)
 
         print("Init. complete.")
+
+    def save(self):
+        self.pre_save_update()
+        path = self.path_data.value.get()
+        monexif.sqlite_to_xlsx(self.con, path)
+        print(f"Saved {path}")
+
+    def pre_save_update(self):
+        paths = [i[0] for i in self.con.execute("select image_path from imgdata")]
+        full_paths = [(self.absolute_path(i), i) for i in paths]
+        self.con.executemany(
+            "update imgdata set image_path_full = ? where image_path = ?", full_paths
+        )
 
     def make_setup_frame(self):
         pad = dict(anchor="nw", side="top")
@@ -189,9 +210,7 @@ class MonExifUI:
         P(ttk.Button(f, text="Load new images", command=cb), **pad)
 
         def cb(self=self):
-            path = self.path_data.value.get()
-            monexif.sqlite_to_xlsx(self.con, path)
-            print(f"Saved {path}")
+            self.save()
 
         P(ttk.Button(f, text="Save data to file", command=cb), **pad)
 
@@ -279,6 +298,7 @@ class MonExifUI:
                 self.record_temp = content = tk.StringVar()
                 if value is not None:
                     content.set(str(value))
+
                 def cb(*args, self=self, data=data, key=field["name"], input=content):
                     print(key, input.get())
                     self.con.execute(
@@ -286,15 +306,16 @@ class MonExifUI:
                         [input.get(), data["image_path"]],
                     )
                     return True
+
                 input = P(
                     ttk.Entry(outer),
                     side="top",
                     anchor="nw",
                 )
-                input["textvariable"]=content
+                input["textvariable"] = content
                 # input.bind("<<KeyRelease>>", cb)
-                content.trace_add("write", cb)                
-                
+                content.trace_add("write", cb)
+
     def make_related(self, outer, field, data):
         f = P(ttk.Frame(outer))
         # P(ttk.Label(f, text=data["related"]), side="top")
@@ -367,9 +388,9 @@ class MonExifUI:
             #  .relative_to requires two absolute paths
             path = self.absolute_path(path)
         return str(Path(path).relative_to(self.path_pics.value.get()))
-        
+
     def absolute_path(self, path):
-        return str(Path(self.path_pics.value.get())/path)
+        return str(Path(self.path_pics.value.get()) / path)
 
     def make_browser(self, outer, command=None):
         nav = [

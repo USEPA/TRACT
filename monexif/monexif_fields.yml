@@ -22,6 +22,12 @@ fields:
       - pet-walking
       - biking
       - N/A
+  camera_deploy:
+    type: text
+    input: true
+    values:
+      - EPAR3CAMOT_2021_FALL
+      - EPAR3CAMXX_2021_FALL
   temperature_f:
     input: true
     type: int
@@ -40,18 +46,15 @@ fields:
   image_path:
     show: true
     type: text
+  image_path_full:
+    # calculated on save each time
+    type: text
   image_w:
     type: int
   image_h:
     type: int
   image_bytes:
     type: integer
-  camera_deploy:
-    type: text
-    input: true
-    values:
-      - EPAR3CAMOT_2021_FALL
-      - EPAR3CAMXX_2021_FALL
   image_id:
     type: text
   image_hash:
