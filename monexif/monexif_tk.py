@@ -82,7 +82,17 @@ class MonExifUI:
         self.initialize()  # build UI
         # bind window closing callback
         self.root.protocol("WM_DELETE_WINDOW", self.exiting)
+        self.show_version()
         self.root.mainloop()
+
+    def show_version(self):
+        path = Path(__file__)
+        for level in range(2):
+            path = path.parent
+            if (path / "version.txt").exists():
+                print("Version: " + (path / "version.txt").read_text())
+                return
+        print("Couldn't find version.txt for version information")
 
     def exiting(self):
         message = "OK to exit losing unsaved work,\nCancel to abort and save work"
