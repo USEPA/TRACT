@@ -282,7 +282,10 @@ class MonExifUI:
         P(ttk.Label(outer, text=field["name"]), side="top", anchor="nw")
         value = data.get(field["name"])
         if field.get("show"):
-            P(ttk.Label(outer, text=value), side="top", anchor="nw")
+            truncated = str(value)
+            if isinstance(value, str) and len(truncated) > 20:
+                truncated = truncated[:10]+"…"+truncated[-10:]
+            P(ttk.Label(outer, text=truncated), side="top", anchor="nw")
         elif field.get("input"):
             if field["name"] == "related":
                 P(self.make_related(outer, field, data), side="top", anchor="nw")
@@ -389,8 +392,10 @@ class MonExifUI:
             tn.thumbnail((200, 200))
             f.pimg = ImageTk.PhotoImage(tn)
             P(ttk.Label(f, image=f.pimg), side="top")
+        else:
+            P(ttk.Frame(f, width=200), side="top")  # to stop image moving
 
-        P(ttk.Button(f, width=25, text="Select or view", command=cb), side="top")
+        P(ttk.Button(f, text="Select or view", command=cb), side="top")
         return f
 
     def relative_path(self, path):
