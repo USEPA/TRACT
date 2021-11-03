@@ -1,5 +1,6 @@
 # copy this to .git/hooks:
 # mkdir -p .git/hooks; cp pre-commit .git/hooks; chmod +x .git/hooks/pre-commit
 
+# NOTE: modified version.txt not reported in commit msg. but it works
 date >version.txt
 git add version.txt
