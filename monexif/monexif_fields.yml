@@ -2,6 +2,9 @@ fields:
   image_time:
     type: datetime
     show: true
+  group_number:
+    type: int
+    show: true
   people_n:
     input: true
     type: integer
@@ -13,7 +16,7 @@ fields:
       - north
       - south
       - N/A
-  actitivity:
+  activity:
     input: true
     type: text
     values:
@@ -55,7 +58,7 @@ fields:
     type: int
   image_bytes:
     type: integer
-  image_id:
+  observation_id:
     type: text
   image_hash:
     type: text

@@ -4,6 +4,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from pathlib import Path
 from tkinter import filedialog, messagebox
+from uuid import uuid4
 
 from PIL import Image, ImageTk
 
@@ -104,7 +105,8 @@ class MonExifUI:
         self.images = [
             i[0]
             for i in self.con.execute(
-                "select image_path from imgdata order by image_time asc"
+                "select observation_id from imgdata "
+                "order by image_time, group_number asc"
             )
         ]
 
@@ -171,6 +173,7 @@ class MonExifUI:
             print(f"Loading {path}")
             self.con = monexif.xlsx_to_sqlite(path, SQLPATH)
             self.update_images()
+            self.update_inputs()
             print(f"Data loaded, {len(self.images)} records")
 
         self.path_data = P(
@@ -251,15 +254,19 @@ class MonExifUI:
     def update_inputs(self):
         cur = self.con.cursor()
         cur.execute(
-            "select * from imgdata where image_path = ?",
+            "select * from imgdata where observation_id = ?",
             [self.frm_classify.view.path],
         )
-        data = {k[0]: v for k, v in zip(cur.description, next(cur))}
+        try:
+            data = {k[0]: v for k, v in zip(cur.description, next(cur))}
+        except StopIteration:
+            data = {}
         rec = self.frm_classify.rec
         for item in rec.winfo_children():
             item.destroy()
-        for field in monexif.field_defs()["fields"].values():
-            self.render(rec, field, data)
+        if data:
+            for field in monexif.field_defs()["fields"].values():
+                self.render(rec, field, data)
         return data
 
     def make_classify_frame(self):
@@ -284,8 +291,10 @@ class MonExifUI:
         if field.get("show"):
             truncated = str(value)
             if isinstance(value, str) and len(truncated) > 20:
-                truncated = truncated[:10]+"…"+truncated[-10:]
+                truncated = truncated[:10] + "…" + truncated[-10:]
             P(ttk.Label(outer, text=truncated), side="top", anchor="nw")
+            if field["name"] == "group_number":
+                P(self.add_button(outer, field, data), side="top", anchor="nw")
         elif field.get("input"):
             if field["name"] == "related":
                 P(self.make_related(outer, field, data), side="top", anchor="nw")
@@ -300,8 +309,8 @@ class MonExifUI:
                     print(key, input.get())
                     print(self.record_temp.get())
                     self.con.execute(
-                        f"update imgdata set {key} = ? where image_path = ?",
-                        [input.get(), data["image_path"]],
+                        f"update imgdata set {key} = ? where observation_id = ?",
+                        [input.get(), data["observation_id"]],
                     )
 
                 input.bind("<<ComboboxSelected>>", cb)
@@ -315,8 +324,8 @@ class MonExifUI:
                 def cb(*args, self=self, data=data, key=field["name"], input=content):
                     print(key, input.get())
                     self.con.execute(
-                        f"update imgdata set {key} = ? where image_path = ?",
-                        [input.get(), data["image_path"]],
+                        f"update imgdata set {key} = ? where observation_id = ?",
+                        [input.get(), data["observation_id"]],
                     )
                     return True
 
@@ -329,6 +338,41 @@ class MonExifUI:
                 # input.bind("<<KeyRelease>>", cb)
                 content.trace_add("write", cb)
 
+    def add_button(self, outer, field, data):
+        """Add a button to add a new group_number entry"""
+
+        def cb(field=field, data=data):
+            count = next(
+                self.con.execute(
+                    "select count(*) from imgdata where image_path=?",
+                    [data["image_path"]],
+                )
+            )[0]
+            new = dict(data)
+            new["group_number"] = count + 1
+            new["observation_id"] = uuid4().hex
+            for field in (
+                "related",
+                "related_seconds",
+                "people_n",
+                "direction",
+                "activity",
+            ):
+                new[field] = None
+            monexif.insert_row(self.con, new)
+            new = list(
+                self.con.execute(
+                    "select observation_id from imgdata where image_path=? "
+                    "order by group_number asc",
+                    [data["image_path"]],
+                )
+            )
+            self.frm_classify.view.path = new[-1][0]  # first field from last record
+            self.update_images()
+            self.update_inputs()
+
+        return ttk.Button(outer, text="Add group", command=cb)
+
     def make_related(self, outer, field, data):
         f = P(ttk.Frame(outer))
         # P(ttk.Label(f, text=data["related"]), side="top")
@@ -336,21 +380,10 @@ class MonExifUI:
         def cb():
             top = tk.Toplevel(self.root)
             browser = P(self.make_browser(top), side="top", fill="x")
-            path = None
-            if data["related"]:
-                res = self.con.execute(
-                    "select image_path from imgdata where image_id=?", [data["related"]]
-                )
-                try:
-                    path = next(res)[0]
-                except StopIteration:
-                    pass
-            if path is None:
-                path = data["image_path"]
-            browser.path = path
+            browser.path = data.get("related", data["observation_id"])
             browser.show(browser)
 
-            def cb(browser=browser, path=data["image_path"]):
+            def cb(browser=browser, path=data["observation_id"]):
                 browser.path = path
                 browser.show(browser)
 
@@ -362,7 +395,7 @@ class MonExifUI:
             )
 
             def cb(data=data, browser=browser, top=top, self=self):
-                monexif.set_related(self.con, browser.path, data["image_path"])
+                monexif.set_related(self.con, browser.path, data["observation_id"])
                 top.destroy()
                 self.update_inputs()
 
@@ -385,7 +418,8 @@ class MonExifUI:
 
         if data.get("related"):
             res = self.con.execute(
-                "select image_path from imgdata where image_id = ?", [data["related"]]
+                "select image_path from imgdata where observation_id = ?",
+                [data["related"]],
             )
             path = next(res)[0]
             tn = Image.open(self.absolute_path(path))
@@ -407,6 +441,13 @@ class MonExifUI:
     def absolute_path(self, path):
         return str(Path(self.path_pics.value.get()) / path)
 
+    def img_path(self, obs_id):
+        return next(
+            self.con.execute(
+                "select image_path from imgdata where observation_id=?", [obs_id]
+            )
+        )[0]
+
     def make_browser(self, outer, command=None):
         nav = [
             (-9999, "|<"),
@@ -426,7 +467,7 @@ class MonExifUI:
         row = P(ttk.Frame(view), side="top")
 
         def show(view, self=self):
-            tn = Image.open(self.absolute_path(view.path))
+            tn = Image.open(self.absolute_path(self.img_path(view.path)))
             tn.thumbnail((700, 700))
             view.pimg = ImageTk.PhotoImage(tn)
             view.img.configure(image=view.pimg)

@@ -86,7 +86,8 @@ def add_images(con, basedir: str, paths: list[str]) -> int:
             image_w=exif["pixel_x_dimension"],
             image_h=exif["pixel_y_dimension"],
             image_hash=sha256(data).hexdigest(),
-            image_id=uuid4().hex,
+            observation_id=uuid4().hex,
+            group_number=1,
         )
         insert_row(con, row)
 
@@ -169,7 +170,8 @@ def set_related(con: object, path0: str, path1: str) -> None:
     # convert paths to ids for robustness, capture times too
     id_time = list(
         cur.execute(
-            "select image_id, image_time from imgdata where image_path in (?, ?)",
+            "select observation_id, image_time from imgdata "
+            "where observation_id in (?, ?)",
             [path0, path1],
         )
     )
@@ -182,7 +184,7 @@ def set_related(con: object, path0: str, path1: str) -> None:
     ):
         cur.execute(
             "update imgdata set related=?, related_time=?, related_seconds=? "
-            "where image_id=?",
+            "where observation_id=?",
             [id1, time1, separation, id0],
         )
 
