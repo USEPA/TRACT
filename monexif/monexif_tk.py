@@ -380,7 +380,7 @@ class MonExifUI:
         def cb():
             top = tk.Toplevel(self.root)
             browser = P(self.make_browser(top), side="top", fill="x")
-            browser.path = data.get("related", data["observation_id"])
+            browser.path = data.get("related") or data["observation_id"]
             browser.show(browser)
 
             def cb(browser=browser, path=data["observation_id"]):
