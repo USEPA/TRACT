@@ -5,7 +5,15 @@ fields:
   group_number:
     type: int
     show: true
-  people_n:
+  adults_n:
+    input: true
+    type: integer
+    values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
+  children_n:
+    input: true
+    type: integer
+    values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
+  pets_n:
     input: true
     type: integer
     values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
@@ -21,9 +29,17 @@ fields:
     type: text
     values:
       - walking
-      - skating / rollerblading
-      - pet-walking
-      - biking
+      - running / jogging
+      - biking (e-bike, scooter, tri-cycle)
+      - skateboard / in-line
+      - sitting / resting / hanging out
+      - work / job related
+      - fishing
+      - photography
+      - kayak / canoe / paddle-board
+      - skiing / ice-skating
+      - snowmobiling
+      - other
       - N/A
   camera_deploy:
     type: text
