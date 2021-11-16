@@ -146,6 +146,11 @@ class MonExifUI:
         P(ttk.Button(f, text="Save data to file", command=cb), anchor="nw", side="left")
         stack.add(f)
 
+        if len(sys.argv) > 1:
+            self.path_pics.value.set(sys.argv[1])
+            self.path_data.value.set(sys.argv[2])
+            self.cb_load()
+
         print("Init. complete.")
 
     def save(self):
@@ -161,28 +166,24 @@ class MonExifUI:
             "update imgdata set image_path_full = ? where image_path = ?", full_paths
         )
 
+    def cb_load(self):
+        path = self.path_data.value.get()
+        print(f"Loading {path}")
+        self.con = monexif.xlsx_to_sqlite(path, SQLPATH)
+        self.update_images()
+        self.update_inputs()
+        print(f"Data loaded, {len(self.images)} records")
+
     def make_setup_frame(self):
         pad = dict(anchor="nw", side="top")
         f = self.frm_setup = P(ttk.Frame(self.nb), **pad)
         self.path_pics = P(make_requester(f, "Image folder", "dir"), **pad)
         self.path_pics.value.set("SET THIS FIRST")
 
-        def cb_load(self=self):
-            path = self.path_data.value.get()
-            print(f"Loading {path}")
-            self.con = monexif.xlsx_to_sqlite(path, SQLPATH)
-            self.update_images()
-            self.update_inputs()
-            print(f"Data loaded, {len(self.images)} records")
-
         self.path_data = P(
-            make_requester(f, "Data file", "open", callback=cb_load), **pad
+            make_requester(f, "Data file", "open", callback=self.cb_load), **pad
         )
-        if len(sys.argv) > 1:
-            self.path_data.value.set(sys.argv[1])
-            cb_load(self)
-        else:
-            self.path_data.value.set("SET THIS NEXT")
+        self.path_data.value.set("SET THIS NEXT")
 
         def cb(value=self.path_data.value):
             text = filedialog.asksaveasfilename()
@@ -190,7 +191,7 @@ class MonExifUI:
                 self.path_data.value.set(text)
                 print(f"Creating {text}")
                 monexif.create_data_file(text)
-                cb_load(self)
+                self.cb_load()
 
         P(ttk.Button(f, text="Create new data file", command=cb), **pad)
 
@@ -286,22 +287,23 @@ class MonExifUI:
     def render(self, outer, field, data):
         if not field.get("show") and not field.get("input"):
             return
-        P(ttk.Label(outer, text=field["name"]), side="top", anchor="nw")
+        row = P(ttk.Frame(outer), side="top", anchor="nw")
+        P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
         value = data.get(field["name"])
         if field.get("show"):
             truncated = str(value)
             if isinstance(value, str) and len(truncated) > 20:
                 truncated = truncated[:10] + "…" + truncated[-10:]
-            P(ttk.Label(outer, text=truncated), side="top", anchor="nw")
+            P(ttk.Label(row, text=truncated), side="left", anchor="nw")
             if field["name"] == "group_number":
-                P(self.add_button(outer, field, data), side="top", anchor="nw")
+                P(self.add_button(row, field, data), side="top", anchor="nw")
         elif field.get("input"):
             if field["name"] == "related":
                 P(self.make_related(outer, field, data), side="top", anchor="nw")
             elif field.get("values"):
                 input = P(
-                    ttk.Combobox(outer, values=field["values"]),
-                    side="top",
+                    ttk.Combobox(row, values=field["values"]),
+                    side="left",
                     anchor="nw",
                 )
 
@@ -330,8 +332,8 @@ class MonExifUI:
                     return True
 
                 input = P(
-                    ttk.Entry(outer),
-                    side="top",
+                    ttk.Entry(row),
+                    side="left",
                     anchor="nw",
                 )
                 input["textvariable"] = content
@@ -428,7 +430,7 @@ class MonExifUI:
             self.frm_classify.view.path = data["related"]
             self.frm_classify.view.show(self.frm_classify.view, self=self)
             self.update_inputs()
-        
+
         row = P(ttk.Frame(f), side="top")
         P(ttk.Button(row, text="Select or view", command=cb), side="left")
         if data.get("related"):
