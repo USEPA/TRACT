@@ -251,16 +251,17 @@ class MonExifUI:
 
         return self.frm_tools
 
-    def update_inputs(self):
+    def observation_data(self, obs_id):
         cur = self.con.cursor()
-        cur.execute(
-            "select * from imgdata where observation_id = ?",
-            [self.frm_classify.view.path],
-        )
+        cur.execute("select * from imgdata where observation_id = ?", [obs_id])
         try:
             data = {k[0]: v for k, v in zip(cur.description, next(cur))}
         except StopIteration:
             data = {}
+        return data
+
+    def update_inputs(self):
+        data = self.observation_data(self.frm_classify.view.path)
         rec = self.frm_classify.rec
         for item in rec.winfo_children():
             item.destroy()
@@ -467,7 +468,11 @@ class MonExifUI:
             view.pimg = ImageTk.PhotoImage(tn)
             view.img.configure(image=view.pimg)
             if view.info:
-                view.info.configure(text="info. here")
+                data = self.observation_data(view.path)
+                view.info.configure(
+                    text="{image_time} Group: {group_number} {adults_n}/{children_n}/"
+                    "{pets_n} {direction} {activity}".format_map(data)
+                )
 
         view.show = show
 
@@ -486,12 +491,12 @@ class MonExifUI:
                     command()
 
             P(ttk.Button(row, text=text, command=cb, width=4))
-        
+
         if info:
             view.info = P(ttk.Label(view, text="info"), side="top")
         else:
             view.info = False
-            
+
         view.pack(fill="both", expand="yes")
         return view
 
