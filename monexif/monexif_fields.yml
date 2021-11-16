@@ -47,6 +47,10 @@ fields:
       - work / job related
       - other
       - N/A
+  other:
+    input: true
+    clear_to: null
+    type: text
   camera_deploy:
     type: text
     input: true

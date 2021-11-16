@@ -69,7 +69,6 @@ class MonExifUI:
     def __init__(self):
 
         self.images = []  # list of images in time order
-        self.image_i = 0  # current image index
         self.con = None  # DB connection
         # switch print() to console widget
         self.stdout = sys.stdout
@@ -279,7 +278,7 @@ class MonExifUI:
 
         f.input = ttk.Frame()
 
-        f.view = P(self.make_browser(f, command=cb), side="right")
+        f.view = P(self.make_browser(f, command=cb, info=True), side="right")
         f.rec = P(ttk.Frame(f), side="left", anchor="nw")
 
         return f
@@ -425,7 +424,15 @@ class MonExifUI:
         else:
             P(ttk.Frame(f, width=200), side="top")  # to stop image moving
 
-        P(ttk.Button(f, text="Select or view", command=cb), side="top")
+        def cb_jump(self=self, data=data):
+            self.frm_classify.view.path = data["related"]
+            self.frm_classify.view.show(self.frm_classify.view, self=self)
+            self.update_inputs()
+        
+        row = P(ttk.Frame(f), side="top")
+        P(ttk.Button(row, text="Select or view", command=cb), side="left")
+        if data.get("related"):
+            P(ttk.Button(row, text="Jump to", command=cb_jump), side="left")
         return f
 
     def relative_path(self, path):
