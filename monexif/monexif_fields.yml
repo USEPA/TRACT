@@ -7,14 +7,17 @@ fields:
     show: true
   adults_n:
     input: true
+    clear_to: null
     type: integer
     values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
   children_n:
     input: true
+    clear_to: null
     type: integer
     values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
   pets_n:
     input: true
+    clear_to: null
     type: integer
     values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
   direction:
@@ -27,6 +30,7 @@ fields:
       - N/A
   activity:
     input: true
+    clear_to: null
     type: text
     values:
       - biking (e-bike, scooter, tri-cycle)
@@ -39,7 +43,7 @@ fields:
       - skiing / ice-skating
       - snowmobiling
       - walking
-      - wheelchair / assisted bike
+      - wheelchair / adaptive bike
       - work / job related
       - other
       - N/A
@@ -54,12 +58,15 @@ fields:
     type: int
   related:
     input: true
+    clear_to: null
     type: text
   related_time:
     show: true
+    clear_to: null
     type: text
   related_seconds:
     show: true
+    clear_to: null
     type: int
   image_name:
     show: true

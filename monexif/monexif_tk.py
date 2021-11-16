@@ -374,7 +374,7 @@ class MonExifUI:
 
         def cb():
             top = tk.Toplevel(self.root)
-            browser = P(self.make_browser(top), side="top", fill="x")
+            browser = P(self.make_browser(top, info=True), side="top", fill="x")
             browser.path = data.get("related") or data["observation_id"]
             browser.show(browser)
 
@@ -443,7 +443,7 @@ class MonExifUI:
             )
         )[0]
 
-    def make_browser(self, outer, command=None):
+    def make_browser(self, outer, command=None, info=False):
         nav = [
             (-9999, "|<"),
             (-1000, "≪≪"),
@@ -466,6 +466,8 @@ class MonExifUI:
             tn.thumbnail((700, 700))
             view.pimg = ImageTk.PhotoImage(tn)
             view.img.configure(image=view.pimg)
+            if view.info:
+                view.info.configure(text="info. here")
 
         view.show = show
 
@@ -484,6 +486,12 @@ class MonExifUI:
                     command()
 
             P(ttk.Button(row, text=text, command=cb, width=4))
+        
+        if info:
+            view.info = P(ttk.Label(view, text="info"), side="top")
+        else:
+            view.info = False
+            
         view.pack(fill="both", expand="yes")
         return view
 
