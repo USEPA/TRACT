@@ -351,14 +351,9 @@ class MonExifUI:
             new = dict(data)
             new["group_number"] = count + 1
             new["observation_id"] = uuid4().hex
-            for field in (
-                "related",
-                "related_seconds",
-                "people_n",
-                "direction",
-                "activity",
-            ):
-                new[field] = None
+            for field_name, field in monexif.field_defs()["fields"].items():
+                if "clear_to" in field and field_name in new:
+                    new[field_name] = field["clear_to"]
             monexif.insert_row(self.con, new)
             new = list(
                 self.con.execute(

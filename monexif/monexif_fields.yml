@@ -18,6 +18,7 @@ fields:
     type: integer
     values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
   direction:
+    clear_to: null
     input: true
     type: text
     values:
@@ -28,17 +29,18 @@ fields:
     input: true
     type: text
     values:
-      - walking
-      - running / jogging
       - biking (e-bike, scooter, tri-cycle)
-      - skateboard / in-line
-      - sitting / resting / hanging out
-      - work / job related
       - fishing
-      - photography
       - kayak / canoe / paddle-board
+      - photography
+      - running / jogging
+      - sitting / resting / hanging out
+      - skateboard / in-line
       - skiing / ice-skating
       - snowmobiling
+      - walking
+      - wheelchair / assisted bike
+      - work / job related
       - other
       - N/A
   camera_deploy:
