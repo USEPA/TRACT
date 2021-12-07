@@ -29,15 +29,16 @@ print(resource_path(""))
 print(os.listdir(resource_path("")))
 
 
-def P(x, **kwargs):
+def P(widget, **kwargs):
+    """Convenience wrapper to pack a widget"""
     pack_kwargs = dict(padx=2, pady=2, side="left")
     if "pad" in kwargs:
         kwargs["padx"] = kwargs["pad"]
         kwargs["pady"] = kwargs["pad"]
         del kwargs["pad"]
     pack_kwargs.update(kwargs)
-    x.pack(pack_kwargs)
-    return x
+    widget.pack(pack_kwargs)
+    return widget
 
 
 def make_requester(outer, label, kind, callback=None):
@@ -314,6 +315,7 @@ class MonExifUI:
                         f"update imgdata set {key} = ? where observation_id = ?",
                         [input.get(), data["observation_id"]],
                     )
+                    self.frm_classify.view.show(self.frm_classify.view)
 
                 input.bind("<<ComboboxSelected>>", cb)
                 if value in field["values"]:
@@ -329,6 +331,7 @@ class MonExifUI:
                         f"update imgdata set {key} = ? where observation_id = ?",
                         [input.get(), data["observation_id"]],
                     )
+                    self.frm_classify.view.show(self.frm_classify.view)
                     return True
 
                 input = P(
