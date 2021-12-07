@@ -1,5 +1,6 @@
 import platform
 import sqlite3
+from collections import namedtuple
 from hashlib import sha256
 from itertools import product
 from pathlib import Path
@@ -78,6 +79,7 @@ def add_images(con, basedir: str, paths: list[str]) -> int:
         fullpath = Path(basedir) / path
         exif = read_exif(fullpath)
         data = fullpath.read_bytes()
+        observation_id = uuid4().hex
         row = dict(
             image_name=fullpath.name,
             image_path=path,
@@ -86,7 +88,8 @@ def add_images(con, basedir: str, paths: list[str]) -> int:
             image_w=exif["pixel_x_dimension"],
             image_h=exif["pixel_y_dimension"],
             image_hash=sha256(data).hexdigest(),
-            observation_id=uuid4().hex,
+            observation_id=observation_id,
+            group_id=observation_id,
             group_number=1,
         )
         insert_row(con, row)
@@ -165,27 +168,32 @@ def load_new(con: object, img_path: str):
     add_images(con, img_path, new)
 
 
-def set_related(con: object, path0: str, path1: str) -> None:
+def set_related(con: object, obs_id0: str, obs_id1: str) -> None:
     cur = con.cursor()
-    # convert paths to ids for robustness, capture times too
-    id_time = list(
-        cur.execute(
-            "select observation_id, image_time from imgdata "
-            "where observation_id in (?, ?)",
-            [path0, path1],
-        )
+    cur.execute(
+        "select observation_id, group_id, image_time from imgdata "
+        "where observation_id in (?, ?)",
+        [obs_id0, obs_id1],
     )
-    separation = abs((parse(id_time[0][1]) - parse(id_time[1][1])).total_seconds())
+    Record = namedtuple("Record", [i[0] for i in cur.description])
+    obs = [Record._make(i) for i in cur]
+
+    separation = abs(
+        (parse(obs[0].image_time) - parse(obs[1].image_time)).total_seconds()
+    )
     # set reciprocal relationship
-    for id0, id1, time1 in (id_time[0][0], id_time[1][0], id_time[1][1]), (
-        id_time[1][0],
-        id_time[0][0],
-        id_time[0][1],
-    ):
+    for ob0, ob1 in (obs[0], obs[1]), (obs[1], obs[0]):
         cur.execute(
-            "update imgdata set related=?, related_time=?, related_seconds=? "
+            "update imgdata set related=?, related_time=?, related_seconds=?, "
+            "group_id=? "
             "where observation_id=?",
-            [id1, time1, separation, id0],
+            [
+                ob1.observation_id,
+                ob1.image_time,
+                separation,
+                obs[0].group_id,
+                ob0.observation_id,
+            ],
         )
 
 

@@ -89,6 +89,8 @@ fields:
     type: integer
   observation_id:
     type: text
+  group_id:
+    type: text
   image_hash:
     type: text
 
