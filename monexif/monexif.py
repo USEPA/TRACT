@@ -12,6 +12,11 @@ from dateutil.parser import parse
 from openpyxl import Workbook, load_workbook
 
 
+def named_tuples(cursor):
+    Record = namedtuple("Record", [i[0] for i in cursor.description])
+    return [Record._make(i) for i in cursor]
+
+
 def create_data_file(path: str) -> None:
     """Read monexif_fields.yml and create a new workbook, *OVERWRITING* existing."""
     fields = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
@@ -168,6 +173,13 @@ def load_new(con: object, img_path: str):
     add_images(con, img_path, new)
 
 
+def unset_related(con: object, obs_id: str) -> None:
+    cur = con.cursor()
+    cur.execute(
+        "update imgdata set group_id=? where observation_id=?", [uuid4().hex, obs_id]
+    )
+
+
 def set_related(con: object, obs_id0: str, obs_id1: str) -> None:
     cur = con.cursor()
     cur.execute(
@@ -175,8 +187,7 @@ def set_related(con: object, obs_id0: str, obs_id1: str) -> None:
         "where observation_id in (?, ?)",
         [obs_id0, obs_id1],
     )
-    Record = namedtuple("Record", [i[0] for i in cur.description])
-    obs = [Record._make(i) for i in cur]
+    obs = named_tuples(cur)
 
     separation = abs(
         (parse(obs[0].image_time) - parse(obs[1].image_time)).total_seconds()

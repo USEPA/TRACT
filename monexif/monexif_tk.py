@@ -375,7 +375,6 @@ class MonExifUI:
 
     def make_related(self, outer, field, data):
         f = P(ttk.Frame(outer))
-        # P(ttk.Label(f, text=data["related"]), side="top")
 
         def cb():
             top = tk.Toplevel(self.root)
@@ -416,28 +415,31 @@ class MonExifUI:
                 expand="y",
             )
 
-        if data.get("related"):
-            res = self.con.execute(
-                "select image_path from imgdata where observation_id = ?",
-                [data["related"]],
-            )
-            path = next(res)[0]
-            tn = Image.open(self.absolute_path(path))
-            tn.thumbnail((200, 200))
-            f.pimg = ImageTk.PhotoImage(tn)
-            P(ttk.Label(f, image=f.pimg), side="top")
+        P(ttk.Button(f, text="Add", command=cb), side="top")
+
+        res = self.con.execute(
+            "select * from imgdata where group_id = ? and observation_id != ?",
+            [data["group_id"], data["observation_id"]],
+        )
+        for other in monexif.named_tuples(res):
+            line = P(ttk.Frame(f), side="top")
+            P(ttk.Label(line, text=other.image_time), side="left")
+
+            def cb_jump(self=self, data=other):
+                self.frm_classify.view.path = data.observation_id
+                self.frm_classify.view.show(self.frm_classify.view, self=self)
+                self.update_inputs()
+
+            P(ttk.Button(line, text="Go to", command=cb_jump, width=7), side="left")
+
+            def cb(self=self, data=other):
+                monexif.unset_related(self.con, data.observation_id)
+                self.update_inputs()
+
+            P(ttk.Button(line, text="Unrelate", command=cb, width=7), side="left")
         else:
             P(ttk.Frame(f, width=200), side="top")  # to stop image moving
 
-        def cb_jump(self=self, data=data):
-            self.frm_classify.view.path = data["related"]
-            self.frm_classify.view.show(self.frm_classify.view, self=self)
-            self.update_inputs()
-
-        row = P(ttk.Frame(f), side="top")
-        P(ttk.Button(row, text="Select or view", command=cb), side="left")
-        if data.get("related"):
-            P(ttk.Button(row, text="Jump to", command=cb_jump), side="left")
         return f
 
     def relative_path(self, path):
