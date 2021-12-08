@@ -299,7 +299,7 @@ class MonExifUI:
             if field["name"] == "group_number":
                 P(self.add_button(row, field, data), side="top", anchor="nw")
         elif field.get("input"):
-            if field["name"] == "related":
+            if field["name"] == "group_id":
                 P(self.make_related(outer, field, data), side="top", anchor="nw")
             elif field.get("values"):
                 input = P(
@@ -356,6 +356,7 @@ class MonExifUI:
             new = dict(data)
             new["group_number"] = count + 1
             new["observation_id"] = uuid4().hex
+            new["group_id"] = uuid4().hex
             for field_name, field in monexif.field_defs()["fields"].items():
                 if "clear_to" in field and field_name in new:
                     new[field_name] = field["clear_to"]
@@ -374,12 +375,48 @@ class MonExifUI:
         return ttk.Button(outer, text="Add group", command=cb)
 
     def make_related(self, outer, field, data):
+        width = 250
+        res = self.con.execute(
+            "select * from imgdata where group_id = ? order by image_time",
+            [data["group_id"]],
+        )
+        others = monexif.named_tuples(res)
+
+        P(ttk.Label(outer, text="Related observations"), side="top", anchor="nw")
         f = P(ttk.Frame(outer))
+
+        if len(others) > 1:
+            for other in others:
+                line = P(ttk.Frame(f, width=width), side="top")
+                P(ttk.Label(line, text=other.image_time), side="left")
+
+                if other.observation_id == data["observation_id"]:
+                    P(ttk.Label(line, text="(this obs.)"), side="left")
+                else:
+
+                    def cb_jump(self=self, data=other):
+                        self.frm_classify.view.path = data.observation_id
+                        self.frm_classify.view.show(self.frm_classify.view, self=self)
+                        self.update_inputs()
+
+                    P(
+                        ttk.Button(line, text="Go to", command=cb_jump, width=7),
+                        side="left",
+                    )
+
+                def cb(self=self, data=other):
+                    monexif.unset_related(self.con, data.observation_id)
+                    self.update_inputs()
+
+                P(ttk.Button(line, text="Unrelate", command=cb, width=7), side="left")
+
+        else:
+            P(ttk.Frame(outer, width=width), side="top")  # to stop image moving
 
         def cb():
             top = tk.Toplevel(self.root)
             browser = P(self.make_browser(top, info=True), side="top", fill="x")
-            browser.path = data.get("related") or data["observation_id"]
+            browser.path = data["observation_id"]
             browser.show(browser)
 
             def cb(browser=browser, path=data["observation_id"]):
@@ -416,29 +453,6 @@ class MonExifUI:
             )
 
         P(ttk.Button(f, text="Add", command=cb), side="top")
-
-        res = self.con.execute(
-            "select * from imgdata where group_id = ? and observation_id != ?",
-            [data["group_id"], data["observation_id"]],
-        )
-        for other in monexif.named_tuples(res):
-            line = P(ttk.Frame(f), side="top")
-            P(ttk.Label(line, text=other.image_time), side="left")
-
-            def cb_jump(self=self, data=other):
-                self.frm_classify.view.path = data.observation_id
-                self.frm_classify.view.show(self.frm_classify.view, self=self)
-                self.update_inputs()
-
-            P(ttk.Button(line, text="Go to", command=cb_jump, width=7), side="left")
-
-            def cb(self=self, data=other):
-                monexif.unset_related(self.con, data.observation_id)
-                self.update_inputs()
-
-            P(ttk.Button(line, text="Unrelate", command=cb, width=7), side="left")
-        else:
-            P(ttk.Frame(f, width=200), side="top")  # to stop image moving
 
         return f
 

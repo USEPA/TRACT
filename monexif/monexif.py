@@ -8,7 +8,6 @@ from uuid import uuid4
 
 import exif
 import yaml
-from dateutil.parser import parse
 from openpyxl import Workbook, load_workbook
 
 
@@ -84,7 +83,6 @@ def add_images(con, basedir: str, paths: list[str]) -> int:
         fullpath = Path(basedir) / path
         exif = read_exif(fullpath)
         data = fullpath.read_bytes()
-        observation_id = uuid4().hex
         row = dict(
             image_name=fullpath.name,
             image_path=path,
@@ -93,8 +91,8 @@ def add_images(con, basedir: str, paths: list[str]) -> int:
             image_w=exif["pixel_x_dimension"],
             image_h=exif["pixel_y_dimension"],
             image_hash=sha256(data).hexdigest(),
-            observation_id=observation_id,
-            group_id=observation_id,
+            observation_id=uuid4().hex,
+            group_id=uuid4().hex,
             group_number=1,
         )
         insert_row(con, row)
@@ -183,29 +181,18 @@ def unset_related(con: object, obs_id: str) -> None:
 def set_related(con: object, obs_id0: str, obs_id1: str) -> None:
     cur = con.cursor()
     cur.execute(
-        "select observation_id, group_id, image_time from imgdata "
-        "where observation_id in (?, ?)",
+        "select observation_id, group_id from imgdata where observation_id in (?, ?)",
         [obs_id0, obs_id1],
     )
     obs = named_tuples(cur)
 
-    separation = abs(
-        (parse(obs[0].image_time) - parse(obs[1].image_time)).total_seconds()
+    cur.execute(
+        "update imgdata set group_id=? where observation_id=?",
+        [
+            obs[0].group_id,
+            obs[1].observation_id,
+        ],
     )
-    # set reciprocal relationship
-    for ob0, ob1 in (obs[0], obs[1]), (obs[1], obs[0]):
-        cur.execute(
-            "update imgdata set related=?, related_time=?, related_seconds=?, "
-            "group_id=? "
-            "where observation_id=?",
-            [
-                ob1.observation_id,
-                ob1.image_time,
-                separation,
-                obs[0].group_id,
-                ob0.observation_id,
-            ],
-        )
 
 
 if __name__ == "__main__":

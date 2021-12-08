@@ -60,18 +60,10 @@ fields:
   temperature_f:
     input: true
     type: int
-  related:
+  group_id:
+    # placed here for ordering in UI
     input: true
-    clear_to: null
     type: text
-  related_time:
-    show: true
-    clear_to: null
-    type: text
-  related_seconds:
-    show: true
-    clear_to: null
-    type: int
   image_name:
     show: true
     type: text
@@ -88,8 +80,6 @@ fields:
   image_bytes:
     type: integer
   observation_id:
-    type: text
-  group_id:
     type: text
   image_hash:
     type: text
