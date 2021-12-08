@@ -6,6 +6,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox
 from uuid import uuid4
 
+from dateutil.parser import parse
 from PIL import Image, ImageTk
 
 import monexif
@@ -485,10 +486,18 @@ class MonExifUI:
             (+1000, "≫≫"),
             (+9999, ">|"),
         ]
+
         view = ttk.Frame(outer)
-        view.img = P(ttk.Label(view, text="Click any arrow to start"), side="top")
+
+        view.img = P(
+            ttk.Label(view, text="Click any arrow to start"), side="top", anchor="nw"
+        )
         view.path = None
-        row = P(ttk.Frame(view), side="top")
+
+        if info:
+            view.info = P(ttk.Label(view, text="info"), side="top", anchor="nw")
+        else:
+            view.info = False
 
         def show(view, self=self):
             tn = Image.open(self.absolute_path(self.img_path(view.path)))
@@ -497,13 +506,19 @@ class MonExifUI:
             view.img.configure(image=view.pimg)
             if view.info:
                 data = self.observation_data(view.path)
+                # add day of week
+                data["_image_day_time"] = parse(data["image_time"]).strftime(
+                    "%Y-%m-%d %A %H:%M:%S"
+                )
                 view.info.configure(
-                    text="{image_time} Group: {group_number} {adults_n}/{children_n}/"
+                    text="{_image_day_time} "
+                    "Group: {group_number} {adults_n}/{children_n}/"
                     "{pets_n} {direction} {activity}".format_map(data)
                 )
 
         view.show = show
 
+        row = P(ttk.Frame(view), side="top", anchor="nw")
         for n, text in nav:
 
             def cb(self=self, view=view, n=n, command=command):
@@ -519,11 +534,6 @@ class MonExifUI:
                     command()
 
             P(ttk.Button(row, text=text, command=cb, width=4))
-
-        if info:
-            view.info = P(ttk.Label(view, text="info"), side="top")
-        else:
-            view.info = False
 
         view.pack(fill="both", expand="yes")
         return view
