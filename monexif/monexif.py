@@ -189,25 +189,25 @@ def set_related(con: object, obs_id0: str, obs_id1: str) -> None:
     cur.execute(
         "update imgdata set group_id=? where observation_id=?",
         [
-            obs[0].group_id,
-            obs[1].observation_id,
+            obs[1].group_id,
+            obs[0].observation_id,
         ],
     )
-    updates = {}
-    for field_name, field in field_defs()["fields"].items():
-        print(field_name, getattr(obs[0], field_name, None))
-        if field.get("copy") and not getattr(obs[1], field_name, None):
-            updates[field_name] = getattr(obs[0], field_name, None)
-    if updates:
-        q = ["update imgdata set"]
-        fields = ", ".join(f"{i}=?" for i in updates)
-        q.append(fields)
-        q.append("where observation_id=?")
-        q = " ".join(q)
-        print(q)
-        values = list(updates.values()) + [obs[1].observation_id]
-        print(values)
-        con.execute(q, values)
+    for from_, to in (0, 1), (1, 0):
+        updates = {}
+        for field_name, field in field_defs()["fields"].items():
+            if field.get("copy") and getattr(obs[to], field_name, None) is None:
+                updates[field_name] = getattr(obs[from_], field_name, None)
+        if updates:
+            q = ["update imgdata set"]
+            fields = ", ".join(f"{i}=?" for i in updates)
+            q.append(fields)
+            q.append("where observation_id=?")
+            q = " ".join(q)
+            print(q)
+            values = list(updates.values()) + [obs[to].observation_id]
+            print(values)
+            con.execute(q, values)
 
 
 if __name__ == "__main__":
