@@ -429,7 +429,7 @@ class MonExifUI:
             )
 
             def cb(data=data, browser=browser, top=top, self=self):
-                monexif.set_related(self.con, browser.path, data["observation_id"])
+                monexif.set_related(self.con, data["observation_id"], browser.path)
                 top.destroy()
                 self.update_inputs()
 

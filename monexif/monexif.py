@@ -179,12 +179,16 @@ def unset_related(con: object, obs_id: str) -> None:
 
 
 def set_related(con: object, obs_id0: str, obs_id1: str) -> None:
+    """Move obs_id0 into the same group as obs_id1"""
     cur = con.cursor()
     cur.execute(
         "select * from imgdata where observation_id in (?, ?)",
         [obs_id0, obs_id1],
     )
     obs = named_tuples(cur)
+    # *** need to maintain ordering ***
+    if obs[0].observation_id != obs_id0:
+        obs.reverse()
 
     cur.execute(
         "update imgdata set group_id=? where observation_id=?",
