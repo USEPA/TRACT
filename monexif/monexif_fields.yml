@@ -1,3 +1,5 @@
+# clear_to is used when adding groups (multiple in single image)
+# copy is used when linking observations
 fields:
   image_time:
     type: datetime
@@ -7,19 +9,22 @@ fields:
     show: true
   adults_n:
     input: true
-    clear_to: null
     type: integer
     values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
+    clear_to: null
+    copy: true
   children_n:
     input: true
-    clear_to: null
     type: integer
     values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
+    clear_to: null
+    copy: true
   pets_n:
     input: true
-    clear_to: null
     type: integer
     values: [0, 1, 2, 3, 4, 5, 6, 7 ,8, 9, 10, 11, 12, "N/A"]
+    clear_to: null
+    copy: true
   direction:
     clear_to: null
     input: true
@@ -30,8 +35,9 @@ fields:
       - N/A
   activity:
     input: true
-    clear_to: null
     type: text
+    clear_to: null
+    copy: true
     values:
       - biking (e-bike, scooter, tri-cycle)
       - fishing
@@ -49,17 +55,20 @@ fields:
       - N/A
   other:
     input: true
-    clear_to: null
     type: text
+    clear_to: null
+    copy: true
   camera_deploy:
+    clear_to: null
     type: text
     input: true
     values:
       - EPAR3CAMOT_2021_FALL
-      - EPAR3CAMXX_2021_FALL
+      - EPAR3CAMPP_2021_FALL
   temperature_f:
     input: true
     type: int
+    clear_to: null
   group_id:
     # placed here for ordering in UI
     input: true

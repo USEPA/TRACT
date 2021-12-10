@@ -376,7 +376,7 @@ class MonExifUI:
         return ttk.Button(outer, text="Add group", command=cb)
 
     def make_related(self, outer, field, data):
-        width = 250
+        width = 275
         res = self.con.execute(
             "select * from imgdata where group_id = ? order by image_time",
             [data["group_id"]],
@@ -384,11 +384,11 @@ class MonExifUI:
         others = monexif.named_tuples(res)
 
         P(ttk.Label(outer, text="Related observations"), side="top", anchor="nw")
-        f = P(ttk.Frame(outer))
+        f = P(ttk.Frame(outer, width=width), side="top", anchor="nw")
 
         if len(others) > 1:
             for other in others:
-                line = P(ttk.Frame(f, width=width), side="top")
+                line = P(ttk.Frame(f), side="top")
                 P(ttk.Label(line, text=other.image_time), side="left")
 
                 if other.observation_id == data["observation_id"]:
@@ -401,7 +401,7 @@ class MonExifUI:
                         self.update_inputs()
 
                     P(
-                        ttk.Button(line, text="Go to", command=cb_jump, width=7),
+                        ttk.Button(line, text="Go to", command=cb_jump, width=8),
                         side="left",
                     )
 
@@ -409,10 +409,7 @@ class MonExifUI:
                     monexif.unset_related(self.con, data.observation_id)
                     self.update_inputs()
 
-                P(ttk.Button(line, text="Unrelate", command=cb, width=7), side="left")
-
-        else:
-            P(ttk.Frame(outer, width=width), side="top")  # to stop image moving
+                P(ttk.Button(line, text="Unrelate", command=cb, width=8), side="left")
 
         def cb():
             top = tk.Toplevel(self.root)
@@ -501,7 +498,7 @@ class MonExifUI:
 
         def show(view, self=self):
             tn = Image.open(self.absolute_path(self.img_path(view.path)))
-            tn.thumbnail((700, 700))
+            tn.thumbnail((1000, 1000))
             view.pimg = ImageTk.PhotoImage(tn)
             view.img.configure(image=view.pimg)
             if view.info:
