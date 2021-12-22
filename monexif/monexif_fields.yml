@@ -73,6 +73,16 @@ fields:
     # placed here for ordering in UI
     input: true
     type: text
+  entry_by:
+    clear_to: null
+    type: text
+    input: true
+    previous: true
+  qa_by:
+    clear_to: null
+    type: text
+    input: true
+    previous: true
   observation_status:
     clear_to: null
     type: text

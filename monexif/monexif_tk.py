@@ -294,65 +294,87 @@ class MonExifUI:
 
         return f
 
+    def render_show(self, outer, field, data, value, row):
+        P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
+        truncated = str(value)
+        if isinstance(value, str) and len(truncated) > 20:
+            truncated = truncated[:10] + "…" + truncated[-10:]
+        P(ttk.Label(row, text=truncated), side="left", anchor="nw")
+        if field["name"] == "group_number":
+            P(self.add_button(row, field, data), side="top", anchor="nw")
+
+    def render_dropdown(self, outer, field, data, value, row):
+        P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
+        values = field.get("values", [])
+        if field.get("previous"):
+            values = sorted(
+                set(values)
+                | set(
+                    i[0] or ""
+                    for i in self.con.execute(
+                        f"select distinct {field['name']} from imgdata"
+                    )
+                )
+            )
+            values = [i for i in values if i]
+        input = P(
+            ttk.Combobox(row, values=values),
+            side="left",
+            anchor="nw",
+        )
+
+        def cb(event, self=self, data=data, key=field["name"], input=input):
+            print(key, input.get())
+            print(self.record_temp.get())
+            self.con.execute(
+                f"update imgdata set {key} = ? where observation_id = ?",
+                [input.get(), data["observation_id"]],
+            )
+            self.frm_classify.view.show(self.frm_classify.view)
+
+        input.bind("<<ComboboxSelected>>", cb)
+        input.bind("<KeyRelease>", cb)
+        if value is not None:
+            input.set(str(value))
+
+    def render_entry(self, outer, field, data, value, row):
+        P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
+        self.record_temp = content = tk.StringVar()
+        if value is not None:
+            content.set(str(value))
+
+        def cb(*args, self=self, data=data, key=field["name"], input=content):
+            print(key, input.get())
+            self.con.execute(
+                f"update imgdata set {key} = ? where observation_id = ?",
+                [input.get(), data["observation_id"]],
+            )
+            self.frm_classify.view.show(self.frm_classify.view)
+            return True
+
+        input = P(
+            ttk.Entry(row),
+            side="left",
+            anchor="nw",
+        )
+        input["textvariable"] = content
+        # input.bind("<<KeyRelease>>", cb)
+        content.trace_add("write", cb)
+
     def render(self, outer, field, data):
         if not field.get("show") and not field.get("input"):
             return
         row = P(ttk.Frame(outer), side="top", anchor="nw")
         value = data.get(field["name"])
         if field.get("show"):
-            P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
-            truncated = str(value)
-            if isinstance(value, str) and len(truncated) > 20:
-                truncated = truncated[:10] + "…" + truncated[-10:]
-            P(ttk.Label(row, text=truncated), side="left", anchor="nw")
-            if field["name"] == "group_number":
-                P(self.add_button(row, field, data), side="top", anchor="nw")
+            self.render_show(outer, field, data, value, row)
         elif field.get("input"):
             if field["name"] == "group_id":
                 P(self.make_related(outer, field, data), side="top", anchor="nw")
-            elif field.get("values"):
-                P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
-                input = P(
-                    ttk.Combobox(row, values=field["values"]),
-                    side="left",
-                    anchor="nw",
-                )
-
-                def cb(event, self=self, data=data, key=field["name"], input=input):
-                    print(key, input.get())
-                    print(self.record_temp.get())
-                    self.con.execute(
-                        f"update imgdata set {key} = ? where observation_id = ?",
-                        [input.get(), data["observation_id"]],
-                    )
-                    self.frm_classify.view.show(self.frm_classify.view)
-
-                input.bind("<<ComboboxSelected>>", cb)
-                if value in field["values"]:
-                    input.set(value)
+            elif field.get("values") or field.get("previous"):
+                self.render_dropdown(outer, field, data, value, row)
             else:
-                P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
-                self.record_temp = content = tk.StringVar()
-                if value is not None:
-                    content.set(str(value))
-
-                def cb(*args, self=self, data=data, key=field["name"], input=content):
-                    print(key, input.get())
-                    self.con.execute(
-                        f"update imgdata set {key} = ? where observation_id = ?",
-                        [input.get(), data["observation_id"]],
-                    )
-                    self.frm_classify.view.show(self.frm_classify.view)
-                    return True
-
-                input = P(
-                    ttk.Entry(row),
-                    side="left",
-                    anchor="nw",
-                )
-                input["textvariable"] = content
-                # input.bind("<<KeyRelease>>", cb)
-                content.trace_add("write", cb)
+                self.render_entry(outer, field, data, value, row)
 
     def add_button(self, outer, field, data):
         """Add a button to add a new group_number entry"""
