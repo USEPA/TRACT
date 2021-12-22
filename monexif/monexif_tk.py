@@ -14,6 +14,14 @@ import monexif
 DEVMODE = os.environ.get("MONEXIF_DEVMODE")
 SQLPATH = ":memory:"
 
+OBS_TYPES = {
+    "All": None,
+    "Unclassified / needs review": [None, "not classified", "needs review"],
+    "Unclassified": [None, "not classified"],
+    "Needs review": ["needs review"],
+    "Needs QA": ["entry complete", "no relevant content"],
+}
+
 
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
@@ -281,7 +289,7 @@ class MonExifUI:
 
         f.input = ttk.Frame()
 
-        f.view = P(self.make_browser(f, command=cb, info=True), side="right")
+        f.view = P(self.make_browser(f, command=cb, info=True, kind=True), side="right")
         f.rec = P(ttk.Frame(f), side="left", anchor="nw")
 
         return f
@@ -380,7 +388,8 @@ class MonExifUI:
     def make_related(self, outer, field, data):
         width = 275
         res = self.con.execute(
-            "select * from imgdata where group_id = ? order by image_time",
+            "select * from imgdata where group_id = ? "
+            "order by image_time, group_number",
             [data["group_id"]],
         )
         others = monexif.named_tuples(res)
@@ -475,7 +484,35 @@ class MonExifUI:
             )
         )[0]
 
-    def make_browser(self, outer, command=None, info=False):
+    def advance_image_index(self, kind, idx, increment):
+        if not kind:
+            return idx + increment
+        kind = kind.get() or "All"
+        if OBS_TYPES[kind] is None:
+            return idx + increment
+        obs_status = list(
+            self.con.execute(
+                "select observation_id, observation_status "
+                "from imgdata order by image_time, group_number"
+            )
+        )
+        new_idx = idx
+        todo = abs(increment)
+        increment = 1 if increment > 0 else -1
+        in_bounds = lambda x: x >= 0 and x < len(obs_status)
+        while todo:
+            todo -= 1
+            new_idx += increment
+            while in_bounds(new_idx) and obs_status[new_idx][1] not in OBS_TYPES[kind]:
+                new_idx += increment
+            if not in_bounds(new_idx):
+                break
+            if obs_status[new_idx][1] in OBS_TYPES[kind]:
+                idx = new_idx
+
+        return idx
+
+    def make_browser(self, outer, command=None, info=False, kind=False):
         nav = [
             (-9999, "|<"),
             (-1000, "≪≪"),
@@ -513,22 +550,33 @@ class MonExifUI:
                     "%Y-%m-%d %A %H:%M:%S"
                 )
                 view.info.configure(
-                    text="{_image_day_time} "
-                    "Group: {group_number} {adults_n}/{children_n}/"
-                    "{pets_n} {direction} {activity}".format_map(data)
+                    text="{_image_day_time} Group: {group_number} "
+                    "{adults_n}/{children_n}/ {pets_n} {direction} {activity} "
+                    "({observation_status})".format_map(data)
                 )
 
         view.show = show
 
         row = P(ttk.Frame(view), side="top", anchor="nw")
+
+        if kind:
+            view.kind = ttk.Combobox(
+                row,
+                values=list(OBS_TYPES),
+            )
+            view.kind.current(0)
+
+        else:
+            view.kind = False
+
         for n, text in nav:
 
-            def cb(self=self, view=view, n=n, command=command):
+            def cb(self=self, view=view, n=n, command=command, kind=view.kind):
                 if view.path is None:
                     view.path = self.images[0]
                 else:
                     idx = self.images.index(view.path)
-                    idx += n
+                    idx = self.advance_image_index(kind, idx, n)
                     idx = max(0, min(idx, len(self.images) - 1))
                     view.path = self.images[idx]
                 view.show(view)
@@ -536,6 +584,9 @@ class MonExifUI:
                     command()
 
             P(ttk.Button(row, text=text, command=cb, width=4))
+
+        if kind:
+            P(view.kind, side="left", anchor="w")
 
         view.pack(fill="both", expand="yes")
         return view
