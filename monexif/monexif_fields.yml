@@ -73,6 +73,17 @@ fields:
     # placed here for ordering in UI
     input: true
     type: text
+  observation_status:
+    clear_to: null
+    type: text
+    input: true
+    values:
+      - not classified
+      - entry complete
+      - needs review
+      - no relevant content
+      - QA complete
+      - QA complete - no relevant content
   image_name:
     show: true
     type: text

@@ -290,9 +290,9 @@ class MonExifUI:
         if not field.get("show") and not field.get("input"):
             return
         row = P(ttk.Frame(outer), side="top", anchor="nw")
-        P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
         value = data.get(field["name"])
         if field.get("show"):
+            P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
             truncated = str(value)
             if isinstance(value, str) and len(truncated) > 20:
                 truncated = truncated[:10] + "…" + truncated[-10:]
@@ -303,6 +303,7 @@ class MonExifUI:
             if field["name"] == "group_id":
                 P(self.make_related(outer, field, data), side="top", anchor="nw")
             elif field.get("values"):
+                P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
                 input = P(
                     ttk.Combobox(row, values=field["values"]),
                     side="left",
@@ -322,6 +323,7 @@ class MonExifUI:
                 if value in field["values"]:
                     input.set(value)
             else:
+                P(ttk.Label(row, text=field["name"], width=15), side="left", anchor="e")
                 self.record_temp = content = tk.StringVar()
                 if value is not None:
                     content.set(str(value))
@@ -388,11 +390,20 @@ class MonExifUI:
 
         if len(others) > 1:
             for other in others:
-                line = P(ttk.Frame(f), side="top")
+                line = P(ttk.Frame(f), side="top", anchor="w")
                 P(ttk.Label(line, text=other.image_time), side="left")
 
                 if other.observation_id == data["observation_id"]:
                     P(ttk.Label(line, text="(this obs.)"), side="left")
+
+                    def cb(self=self, data=other):
+                        monexif.unset_related(self.con, data.observation_id)
+                        self.update_inputs()
+
+                    P(
+                        ttk.Button(line, text="Unrelate", command=cb, width=8),
+                        side="left",
+                    )
                 else:
 
                     def cb_jump(self=self, data=other):
@@ -404,12 +415,6 @@ class MonExifUI:
                         ttk.Button(line, text="Go to", command=cb_jump, width=8),
                         side="left",
                     )
-
-                def cb(self=self, data=other):
-                    monexif.unset_related(self.con, data.observation_id)
-                    self.update_inputs()
-
-                P(ttk.Button(line, text="Unrelate", command=cb, width=8), side="left")
 
         def cb():
             top = tk.Toplevel(self.root)
