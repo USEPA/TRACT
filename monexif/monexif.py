@@ -52,6 +52,10 @@ def xlsx_to_sqlite(xlsx_path: str, sqlite_path) -> object:
     rows = iter(ws)
     fields = [cell.value for cell in next(rows)]
     sql = [field + " " + field_type.get(field, "text") for field in fields]
+    sql += [
+        field + " " + field_type.get(field, "text")
+        for field in field_type if field not in fields
+    ]
     sql = "create table imgdata (\n" + ",\n".join(sql) + "\n)"
     con = sqlite3.connect(sqlite_path)
     con.execute("drop table if exists imgdata")
