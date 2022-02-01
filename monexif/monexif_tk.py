@@ -11,6 +11,26 @@ from PIL import Image, ImageTk
 
 import monexif
 
+
+class ScrollableFrame(ttk.Frame):
+    # https://blog.teclado.com/tkinter-scrollable-frames/
+    def __init__(self, container, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+        self.canvas = tk.Canvas(self)
+        self.scrollbar = ttk.Scrollbar(
+            self, orient="vertical", command=self.canvas.yview
+        )
+        self.scrollable_frame = ttk.Frame(self.canvas)
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda x: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
+        )
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+
 DEVMODE = os.environ.get("MONEXIF_DEVMODE")
 SQLPATH = ":memory:"
 
@@ -417,7 +437,14 @@ class MonExifUI:
         others = monexif.named_tuples(res)
 
         P(ttk.Label(outer, text="Related observations"), side="top", anchor="nw")
-        f = P(ttk.Frame(outer, width=width), side="top", anchor="nw")
+        self.scroller = P(
+            ScrollableFrame(outer, width=width),
+            side="top",
+            anchor="nw",
+            expand="yes",
+            fill="y",
+        )
+        f = self.scroller.scrollable_frame
 
         if len(others) > 1:
             for other in others:
@@ -446,6 +473,9 @@ class MonExifUI:
                         ttk.Button(line, text="Go to", command=cb_jump, width=8),
                         side="left",
                     )
+        # self.scroller.resize()
+        # self.scroller.pack()
+        # print("Scroller packed")
 
         def cb():
             top = tk.Toplevel(self.root)
@@ -488,7 +518,7 @@ class MonExifUI:
 
         P(ttk.Button(f, text="Add", command=cb), side="top")
 
-        return f
+        return self.scroller
 
     def relative_path(self, path):
         if not Path(path).is_absolute():
