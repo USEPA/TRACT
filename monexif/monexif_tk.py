@@ -16,7 +16,7 @@ class ScrollableFrame(ttk.Frame):
     # https://blog.teclado.com/tkinter-scrollable-frames/
     def __init__(self, container, *args, **kwargs):
         super().__init__(container, *args, **kwargs)
-        self.canvas = tk.Canvas(self)
+        self.canvas = tk.Canvas(self, width=250)
         self.scrollbar = ttk.Scrollbar(
             self, orient="vertical", command=self.canvas.yview
         )
@@ -333,7 +333,7 @@ class MonExifUI:
             idx = min(idx, len(self.images) - 1)
             self.frm_classify.view.path = self.images[idx]
             print(self.frm_classify.view.path)
-            self.frm_classify.view.show(self.frm_classify.view)
+            self.browser_show(self.frm_classify.view)
             self.update_images()
             self.update_inputs()
 
@@ -385,7 +385,7 @@ class MonExifUI:
                 f"update imgdata set {key} = ? where observation_id = ?",
                 [input.get(), data["observation_id"]],
             )
-            self.frm_classify.view.show(self.frm_classify.view)
+            self.browser_show(self.frm_classify.view)
 
         input.bind("<<ComboboxSelected>>", cb)
         input.bind("<KeyRelease>", cb)
@@ -404,7 +404,7 @@ class MonExifUI:
                 f"update imgdata set {key} = ? where observation_id = ?",
                 [input.get(), data["observation_id"]],
             )
-            self.frm_classify.view.show(self.frm_classify.view)
+            self.browser_show(self.frm_classify.view)
             return True
 
         input = P(
@@ -463,7 +463,6 @@ class MonExifUI:
         return ttk.Button(outer, text="Add group", command=cb)
 
     def make_related(self, outer, field, data):
-        width = 275
         res = self.con.execute(
             "select * from imgdata where group_id = ? "
             "order by image_time, group_number",
@@ -472,55 +471,18 @@ class MonExifUI:
         others = monexif.named_tuples(res)
 
         P(ttk.Label(outer, text="Related observations"), side="top", anchor="nw")
-        self.scroller = P(
-            ScrollableFrame(outer, width=width),
-            side="top",
-            anchor="nw",
-            expand="yes",
-            fill="y",
-        )
+        self.scroller = P(ScrollableFrame(outer), side="top", anchor="nw")
         f = self.scroller.scrollable_frame
-
-        if len(others) > 1:
-            for other in others:
-                line = P(ttk.Frame(f), side="top", anchor="w")
-                P(ttk.Label(line, text=other.image_time), side="left")
-
-                if other.observation_id == data["observation_id"]:
-                    P(ttk.Label(line, text="(this obs.)"), side="left")
-
-                    def cb(self=self, data=other):
-                        monexif.unset_related(self.con, data.observation_id)
-                        self.update_inputs()
-
-                    P(
-                        ttk.Button(line, text="Unrelate", command=cb, width=8),
-                        side="left",
-                    )
-                else:
-
-                    def cb_jump(self=self, data=other):
-                        self.frm_classify.view.path = data.observation_id
-                        self.frm_classify.view.show(self.frm_classify.view, self=self)
-                        self.update_inputs()
-
-                    P(
-                        ttk.Button(line, text="Go to", command=cb_jump, width=8),
-                        side="left",
-                    )
-        # self.scroller.resize()
-        # self.scroller.pack()
-        # print("Scroller packed")
 
         def cb():
             top = tk.Toplevel(self.root)
             browser = P(self.make_browser(top, info=True), side="top", fill="x")
             browser.path = data["observation_id"]
-            browser.show(browser)
+            self.browser_show(browser)
 
             def cb(browser=browser, path=data["observation_id"]):
                 browser.path = path
-                browser.show(browser)
+                self.browser_show(browser)
 
             P(
                 ttk.Button(top, text="Original", command=cb),
@@ -552,6 +514,34 @@ class MonExifUI:
             )
 
         P(ttk.Button(f, text="Add", command=cb), side="top")
+
+        if len(others) > 1:
+            for other in others:
+                line = P(ttk.Frame(f), side="top", anchor="w")
+                P(ttk.Label(line, text=other.image_time), side="left")
+
+                if other.observation_id == data["observation_id"]:
+                    P(ttk.Label(line, text="(this obs.)"), side="left")
+
+                    def cb(self=self, data=other):
+                        monexif.unset_related(self.con, data.observation_id)
+                        self.update_inputs()
+
+                    P(
+                        ttk.Button(line, text="Unrelate", command=cb, width=8),
+                        side="left",
+                    )
+                else:
+
+                    def cb_jump(self=self, data=other):
+                        self.frm_classify.view.path = data.observation_id
+                        self.browser_show(self.frm_classify.view)
+                        self.update_inputs()
+
+                    P(
+                        ttk.Button(line, text="Go to", command=cb_jump, width=8),
+                        side="left",
+                    )
 
         return self.scroller
 
@@ -599,6 +589,44 @@ class MonExifUI:
 
         return idx
 
+    def browser_show(self, view):
+        tn = Image.open(self.absolute_path(self.img_path(view.path)))
+        tn.thumbnail((1000, 1000))
+        view.pimg = ImageTk.PhotoImage(tn)
+        view.img.configure(image=view.pimg)
+        idx = self.images.index(view.path)
+        for item in view.tnails.winfo_children():
+            item.destroy()
+        tnail = [
+            (-2, "top", "ne"),
+            (-1, "top", "ne"),
+            (+2, "bottom", "se"),
+            (+1, "bottom", "se"),
+        ]
+        for tn_i, (offset, side, anchor) in enumerate(tnail):
+            if idx + offset < 0 or idx + offset > len(self.images) - 1:
+                continue
+            tnimg = P(
+                ttk.Label(view.tnails, text="Thumb"), side=side, anchor=anchor
+            )
+            path = self.images[idx + offset]
+            tn = Image.open(self.absolute_path(self.img_path(path)))
+            tn.thumbnail((200, 200))
+            tnimg.pimg = ImageTk.PhotoImage(tn)
+            tnimg.configure(image=tnimg.pimg)
+
+        if view.info:
+            data = self.observation_data(view.path)
+            # add day of week
+            data["_image_day_time"] = parse(data["image_time"]).strftime(
+                "%Y-%m-%d %A %H:%M:%S"
+            )
+            view.info.configure(
+                text="{_image_day_time} Group: {group_number} "
+                "{adults_n}/{children_n}/ {pets_n} {direction} {activity} "
+                "({observation_status})".format_map(data)
+            )
+
     def make_browser(self, outer, command=None, info=False, kind=False):
         nav = [
             (-9999, "|<"),
@@ -615,34 +643,20 @@ class MonExifUI:
 
         view = ttk.Frame(outer)
 
+        images = P(ttk.Frame(view), side="top", anchor="nw")
         view.img = P(
-            ttk.Label(view, text="Click any arrow to start"), side="top", anchor="nw"
+            ttk.Label(images, text="Click any arrow to start"), side="left", anchor="w"
         )
+        view.tnails = P(
+            ttk.Frame(images), side="right", anchor="e", fill="y", expand=True
+        )
+
         view.path = None
 
         if info:
             view.info = P(ttk.Label(view, text="info"), side="top", anchor="nw")
         else:
             view.info = False
-
-        def show(view, self=self):
-            tn = Image.open(self.absolute_path(self.img_path(view.path)))
-            tn.thumbnail((1000, 1000))
-            view.pimg = ImageTk.PhotoImage(tn)
-            view.img.configure(image=view.pimg)
-            if view.info:
-                data = self.observation_data(view.path)
-                # add day of week
-                data["_image_day_time"] = parse(data["image_time"]).strftime(
-                    "%Y-%m-%d %A %H:%M:%S"
-                )
-                view.info.configure(
-                    text="{_image_day_time} Group: {group_number} "
-                    "{adults_n}/{children_n}/ {pets_n} {direction} {activity} "
-                    "({observation_status})".format_map(data)
-                )
-
-        view.show = show
 
         row = P(ttk.Frame(view), side="top", anchor="nw")
 
@@ -666,7 +680,7 @@ class MonExifUI:
                     idx = self.advance_image_index(kind, idx, n)
                     idx = max(0, min(idx, len(self.images) - 1))
                     view.path = self.images[idx]
-                view.show(view)
+                self.browser_show(view)
                 if command:
                     command()
 

@@ -140,4 +140,8 @@ pip install -r requirements.txt
 # see pre-commit
 mkdir -p .git/hooks; cp pre-commit .git/hooks; chmod +x .git/hooks/pre-commit
 ```
-
+```
+conda create -n pyexe --override-channels -c conda-forge 'python>=3.9'
+pip install auto-py-to-exe
+start /c/Users/TBrown02/pkg/miniconda/envs/pyexe/Scripts/auto-py-to-exe.exe
+```

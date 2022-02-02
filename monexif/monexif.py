@@ -227,7 +227,6 @@ def set_related(con: object, obs_id0: str, obs_id1: str) -> None:
             q.append(fields)
             q.append("where observation_id=?")
             q = " ".join(q)
-            print(q)
             values = list(updates.values()) + [obs[to].observation_id]
             print(values)
             con.execute(q, values)
