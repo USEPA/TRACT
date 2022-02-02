@@ -37,6 +37,20 @@ def insert_row(con, fields: list[str], row: list = None) -> None:
     con.execute(sql, row)
 
 
+def update_row(con, id_: str, fields: list[str], row: list = None) -> None:
+    if row is None:  # dict input
+        row = list(fields.values())
+        fields = list(fields)
+    defs = field_defs()["fields"]
+    data = {k: v for k, v in zip(fields, row) if "clear_to" in defs[k]}
+    sql = (
+        "update imgdata set (%s)" % ",".join(data)
+        + "= (%s)" % ",".join("?" * len(data))
+        + " where observation_id = ?"
+    )
+    con.execute(sql, list(data.values()) + [id_])
+
+
 def field_defs():
     defs = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
     for k, v in defs["fields"].items():

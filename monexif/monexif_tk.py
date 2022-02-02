@@ -309,9 +309,44 @@ class MonExifUI:
 
         f.input = ttk.Frame()
 
-        f.view = P(self.make_browser(f, command=cb, info=True, kind=True), side="right")
         f.rec = P(ttk.Frame(f), side="left", anchor="nw")
+        rhs = P(ttk.Frame(f), side="left")
+        f.view = P(self.make_browser(rhs, command=cb, info=True, kind=True), side="top")
+        buttons = P(ttk.Frame(rhs), side="top")
 
+        def cb_copy_data(self=self):
+            self.copy_data = self.observation_data(self.frm_classify.view.path)
+
+        P(ttk.Button(buttons, text="Copy", command=cb_copy_data))
+
+        def cb_paste_data(self=self):
+            cur = self.con.cursor()
+            monexif.update_row(cur, self.frm_classify.view.path, self.copy_data)
+            self.update_inputs()
+
+        P(ttk.Button(buttons, text="Paste", command=cb_paste_data))
+
+        def cb_paste_plus_data(self=self):
+            cur = self.con.cursor()
+            monexif.update_row(cur, self.frm_classify.view.path, self.copy_data)
+            idx = self.images.index(self.frm_classify.view.path) + 1
+            idx = min(idx, len(self.images) - 1)
+            self.frm_classify.view.path = self.images[idx]
+            print(self.frm_classify.view.path)
+            self.frm_classify.view.show(self.frm_classify.view)
+            self.update_images()
+            self.update_inputs()
+
+        P(ttk.Button(buttons, text="Paste+", command=cb_paste_plus_data))
+
+        def cb_paste_prev(self=self):
+            idx = self.images.index(self.frm_classify.view.path) - 1
+            prev = self.observation_data(self.images[idx])
+            cur = self.con.cursor()
+            monexif.update_row(cur, self.frm_classify.view.path, prev)
+            self.update_inputs()
+
+        P(ttk.Button(buttons, text="Paste Prev.", command=cb_paste_prev))
         return f
 
     def render_show(self, outer, field, data, value, row):
