@@ -118,7 +118,19 @@ or the images were re-arranged in the folder so they no longer match the `image_
 field, this fingerprint could be used to re-link the images and the observation records,
 *as long as the images have not been altered in any way* (annotated, resized, etc.).
 
+## Copy Paste controls
 
+There are four copy / paste buttons below the image:
+
+`Copy` - this copies the current observation's data to the clipboard.
+
+`Paste` - this pastes the data previously copied to the clipboard with the
+`Copy` button into the current observation.
+
+`Paste+` - like `Paste`, but also advances to next observation.
+
+`Paste Prev.` - like paste, but copies data from the immediately previous
+observation, not the clipboard.
 ## Developer notes
 
 ```shell
