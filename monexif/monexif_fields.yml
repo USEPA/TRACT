@@ -39,6 +39,7 @@ fields:
     clear_to: null
     copy: true
     values:
+      - ATV
       - biking (e-bike, scooter, tri-cycle)
       - fishing
       - kayak / canoe / paddle-board
