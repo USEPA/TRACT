@@ -1,5 +1,6 @@
 # Monexif
 
+
 "Monexif" is a working title for a GUI data entry program which extracts **exif** data
 from site **Mon**itoring images.
 
@@ -131,6 +132,61 @@ There are four copy / paste buttons below the image:
 
 `Paste Prev.` - like paste, but copies data from the immediately previous
 observation, not the clipboard.
+
+## Comparing sheets in Excel
+
+### Basic procedure
+
+- Load both workbooks.
+- Copy all of one.
+- In the other, rename its one sheet (tabs at the bottom) something like "JJJ"
+- Add a sheet, name it something like "AS", and paste the copied content in the new sheet.
+- Close the unaltered workbook.
+- Add a third sheet, and put this formula in cell A1
+
+```Excel
+=IF(JJJ!A1=AS!A1, JJJ!A1, JJJ!A1 & " : " & AS!A1 & ": ?")
+```
+
+which reads "if content in sheet JJJ cell A1 equals content in sheet AS cell A1
+show content from sheet JJJ cell A1 otherwise show 'X : Y: ?' where X and Y are
+the respective content from JJJ and AS".
+
+Then to make the non-matching entries pink, select the entire sheet, then from
+the Home menu in the Styles "group" select the Conditional Formatting icon:
+
+![Conditional formatting](./imgs/cond_format.png)
+
+- Highlight Cells Rules
+- Text that Contains...
+- Then add a rule for text that contains ": ?" (colon space question-mark
+  without the quotes) and pick a format, you can choose Custom format to make
+  the pink background or just use one of the presets.
+
+Now everything that doesn't match should be highlighted.
+
+### Image classification sheet comparison specifics
+
+`group_id`, `observation_id`, `image_full_path`, `entry_by`, `qa_by` - these are not
+expected to match and their columns can be hidden.
+
+`image_name` is intended to match and `image_path` will match if you arranged
+image folders the same way.
+
+`image_name` might not match if filenames weren't converted to
+`YYYYMMDD_HHMMSS` format.  So this is a case where that weird `image_hash`
+column is valuable, as long as that matches you know you're looking at the same
+image regardless of filename etc.
+
+The final step in preparing the comparison spread-sheet is adjusting for
+additional groups, and missing days.  The mechanics are just to move the data
+in the sheet without the group / missing day down, creating a blank line
+/ lines.  But Excel "helps" by adjusting the formulas in the comparison sheet
+to account for the shift.  To avoid this select the entire range that needs to
+move down, and move it down with the mouse while holding Ctrl.  This fills in
+the space with copies of the top row of the moved range, those need to be
+selected and cleared (Delete).
+
 ## Developer notes
 
 ```shell
@@ -145,3 +201,4 @@ conda create -n pyexe --override-channels -c conda-forge 'python>=3.9'
 pip install auto-py-to-exe
 start /c/Users/TBrown02/pkg/miniconda/envs/pyexe/Scripts/auto-py-to-exe.exe
 ```
+
