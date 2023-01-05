@@ -106,9 +106,11 @@ def add_images(con, basedir: str, paths: list[str]) -> int:
             image_name=fullpath.name,
             image_path=path,
             image_bytes=len(data),
-            image_time=exif["datetime_original"].replace(":", "/", 2),
-            image_w=exif["pixel_x_dimension"],
-            image_h=exif["pixel_y_dimension"],
+            image_time=exif.get(
+                "datetime_original", "1970:01:01 00:00:00"
+            ).replace(":", "/", 2),
+            image_w=exif.get("pixel_x_dimension", 1000),
+            image_h=exif.get("pixel_y_dimension", 1000),
             image_hash=sha256(data).hexdigest(),
             observation_id=uuid4().hex,
             group_id=uuid4().hex,
