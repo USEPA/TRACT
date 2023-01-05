@@ -9,7 +9,7 @@ from uuid import uuid4
 from dateutil.parser import parse
 from PIL import Image, ImageTk
 
-import monexif
+import tract
 
 
 class ScrollableFrame(ttk.Frame):
@@ -31,7 +31,7 @@ class ScrollableFrame(ttk.Frame):
         self.scrollbar.pack(side="right", fill="y")
 
 
-DEVMODE = os.environ.get("MONEXIF_DEVMODE")
+DEVMODE = os.environ.get("TRACT_DEVMODE")
 SQLPATH = ":memory:"
 
 OBS_TYPES = {
@@ -93,8 +93,8 @@ def make_requester(outer, label, kind, callback=None):
     return line
 
 
-class MonExifUI:
-    """TTK GUI for monexif."""
+class TractUI:
+    """TTK GUI for tract."""
 
     def __init__(self):
 
@@ -186,7 +186,7 @@ class MonExifUI:
     def save(self):
         self.pre_save_update()
         path = self.path_data.value.get()
-        monexif.sqlite_to_xlsx(self.con, path)
+        tract.sqlite_to_xlsx(self.con, path)
         print(f"Saved {path}")
 
     def pre_save_update(self):
@@ -199,7 +199,7 @@ class MonExifUI:
     def cb_load(self):
         path = self.path_data.value.get()
         print(f"Loading {path}")
-        self.con = monexif.xlsx_to_sqlite(path, SQLPATH)
+        self.con = tract.xlsx_to_sqlite(path, SQLPATH)
         self.update_images()
         self.update_inputs()
         print(f"Data loaded, {len(self.images)} records")
@@ -220,34 +220,34 @@ class MonExifUI:
             if text:
                 self.path_data.value.set(text)
                 print(f"Creating {text}")
-                monexif.create_data_file(text)
+                tract.create_data_file(text)
                 self.cb_load()
 
         P(ttk.Button(f, text="Create new data file", command=cb), **pad)
 
         def cb(self=self):
-            monexif.check_new(self.con, self.path_pics.value.get())
+            tract.check_new(self.con, self.path_pics.value.get())
 
         P(ttk.Button(f, text="Check for new images", command=cb), **pad)
 
         def cb(path_pics=self.path_pics):
             path = path_pics.value.get()
-            imgs = monexif.image_list(path)
-            renames = monexif.new_image_names(path, imgs)
+            imgs = tract.image_list(path)
+            renames = tract.new_image_names(path, imgs)
             print(f"{len(imgs)} images, {len(renames)} need renaming")
 
         P(ttk.Button(f, text="Check image file names", command=cb), **pad)
 
         def cb(path_pics=self.path_pics):
             path = path_pics.value.get()
-            imgs = monexif.image_list(path)
-            renames = monexif.new_image_names(path, imgs, do_renames=True)
+            imgs = tract.image_list(path)
+            renames = tract.new_image_names(path, imgs, do_renames=True)
             print(f"{len(imgs)} images, {len(renames)} renamed")
 
         P(ttk.Button(f, text="Rename images", command=cb), **pad)
 
         def cb(self=self):
-            monexif.load_new(self.con, self.path_pics.value.get())
+            tract.load_new(self.con, self.path_pics.value.get())
             self.update_images()
 
         P(ttk.Button(f, text="Load new images", command=cb), **pad)
@@ -265,16 +265,16 @@ class MonExifUI:
 
         def cb(path_pics=self.path_pics):
             path = path_pics.value.get()
-            imgs = monexif.image_list(path)
-            renames = monexif.new_image_names(path, imgs)
+            imgs = tract.image_list(path)
+            renames = tract.new_image_names(path, imgs)
             print(f"{len(imgs)} images, {len(renames)} need renaming")
 
         P(ttk.Button(f, text="Check image file names", command=cb))
 
         def cb(path_pics=self.path_pics):
             path = path_pics.value.get()
-            imgs = monexif.image_list(path)
-            renames = monexif.new_image_names(path, imgs, do_renames=True)
+            imgs = tract.image_list(path)
+            renames = tract.new_image_names(path, imgs, do_renames=True)
             print(f"{len(imgs)} images, {len(renames)} renamed")
 
         P(ttk.Button(f, text="Rename images", command=cb))
@@ -296,7 +296,7 @@ class MonExifUI:
         for item in rec.winfo_children():
             item.destroy()
         if data:
-            for field in monexif.field_defs()["fields"].values():
+            for field in tract.field_defs()["fields"].values():
                 self.render(rec, field, data)
         return data
 
@@ -321,14 +321,14 @@ class MonExifUI:
 
         def cb_paste_data(self=self):
             cur = self.con.cursor()
-            monexif.update_row(cur, self.frm_classify.view.path, self.copy_data)
+            tract.update_row(cur, self.frm_classify.view.path, self.copy_data)
             self.update_inputs()
 
         P(ttk.Button(buttons, text="Paste", command=cb_paste_data))
 
         def cb_paste_plus_data(self=self):
             cur = self.con.cursor()
-            monexif.update_row(cur, self.frm_classify.view.path, self.copy_data)
+            tract.update_row(cur, self.frm_classify.view.path, self.copy_data)
             idx = self.images.index(self.frm_classify.view.path) + 1
             idx = min(idx, len(self.images) - 1)
             self.frm_classify.view.path = self.images[idx]
@@ -343,7 +343,7 @@ class MonExifUI:
             idx = self.images.index(self.frm_classify.view.path) - 1
             prev = self.observation_data(self.images[idx])
             cur = self.con.cursor()
-            monexif.update_row(cur, self.frm_classify.view.path, prev)
+            tract.update_row(cur, self.frm_classify.view.path, prev)
             self.update_inputs()
 
         P(ttk.Button(buttons, text="Paste Prev.", command=cb_paste_prev))
@@ -445,10 +445,10 @@ class MonExifUI:
             new["group_number"] = count + 1
             new["observation_id"] = uuid4().hex
             new["group_id"] = uuid4().hex
-            for field_name, field in monexif.field_defs()["fields"].items():
+            for field_name, field in tract.field_defs()["fields"].items():
                 if "clear_to" in field and field_name in new:
                     new[field_name] = field["clear_to"]
-            monexif.insert_row(self.con, new)
+            tract.insert_row(self.con, new)
             new = list(
                 self.con.execute(
                     "select observation_id from imgdata where image_path=? "
@@ -468,7 +468,7 @@ class MonExifUI:
             "order by image_time, group_number",
             [data["group_id"]],
         )
-        others = monexif.named_tuples(res)
+        others = tract.named_tuples(res)
 
         P(ttk.Label(outer, text="Related observations"), side="top", anchor="nw")
         self.scroller = P(ScrollableFrame(outer), side="top", anchor="nw")
@@ -492,7 +492,7 @@ class MonExifUI:
             )
 
             def cb(data=data, browser=browser, top=top, self=self):
-                monexif.set_related(self.con, data["observation_id"], browser.path)
+                tract.set_related(self.con, data["observation_id"], browser.path)
                 top.destroy()
                 self.update_inputs()
 
@@ -524,7 +524,7 @@ class MonExifUI:
                     P(ttk.Label(line, text="(this obs.)"), side="left")
 
                     def cb(self=self, data=other):
-                        monexif.unset_related(self.con, data.observation_id)
+                        tract.unset_related(self.con, data.observation_id)
                         self.update_inputs()
 
                     P(
@@ -693,4 +693,4 @@ class MonExifUI:
         return view
 
 
-MonExifUI()
+TractUI()

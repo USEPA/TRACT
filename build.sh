@@ -1,4 +1,4 @@
 pyinstaller --noconfirm --onefile --console \
-  --add-data "C:/Users/TBROWN02/repo/monexif/monexif/monexif_fields.yml;." \
-  --add-data "C:/Users/TBROWN02/repo/monexif/version.txt;." \
-  "C:/Users/TBROWN02/repo/monexif/monexif/monexif_tk.py"
+  --add-data "C:/Users/TBROWN02/repo/tract/tract/tract_fields.yml;." \
+  --add-data "C:/Users/TBROWN02/repo/tract/version.txt;." \
+  "C:/Users/TBROWN02/repo/tract/tract/tract_tk.py"

@@ -17,8 +17,8 @@ def named_tuples(cursor):
 
 
 def create_data_file(path: str) -> None:
-    """Read monexif_fields.yml and create a new workbook, *OVERWRITING* existing."""
-    fields = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
+    """Read tract_fields.yml and create a new workbook, *OVERWRITING* existing."""
+    fields = yaml.safe_load(Path(__file__).with_name("tract_fields.yml").open())
     wb = Workbook()
     ws = wb.active
     ws.title = "ImageData"
@@ -52,7 +52,7 @@ def update_row(con, id_: str, fields: list[str], row: list = None) -> None:
 
 
 def field_defs():
-    defs = yaml.safe_load(Path(__file__).with_name("monexif_fields.yml").open())
+    defs = yaml.safe_load(Path(__file__).with_name("tract_fields.yml").open())
     for k, v in defs["fields"].items():
         v["name"] = k
     return defs

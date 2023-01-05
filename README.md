@@ -1,8 +1,10 @@
-# Monexif
+# TRACT TRail Activity Classification Tool
 
+With TRACT you can assign attributes to images from a trail camera or similar
+site monitoring image source. TRACT reads EXIF data from the images for time
+tagging and allows groups of related images (same subjects, subject coming and
+going, etc.) to be defined to analyze activity durations. 
 
-"Monexif" is a working title for a GUI data entry program which extracts **exif** data
-from site **Mon**itoring images.
 
  - [Overview](#overview)
  - [Known issues](#known-issues)
@@ -11,22 +13,22 @@ from site **Mon**itoring images.
 
 ## Overview
 
-The primary function on Monexif is to allow recording of relationships between
-images collected over time at a site.  Monexif extracts
+The primary function on TRACT is to allow recording of relationships between
+images collected over time at a site.  TRACT extracts
 [EXIF](https://en.wikipedia.org/wiki/Exif) data from images to get the time and
 date of image capture, and provides an interface that allows the user to relate
-multiple images together in a group.  Monexif also allows entry of descriptors
+multiple images together in a group.  TRACT also allows entry of descriptors
 for images - composition of groups present, activity, etc., see the
 [spreadsheet columns](#columns-in-the-spreadsheet) section for more details.
 
-Monexif is intended to be a functional minimal viable product (MVP), solving
+TRACT is intended to be a functional minimal viable product (MVP), solving
 the specific problem of relating images into groups and allowing associated
 data entry.  Part of its minimalistic design is the use of a single Excel
 spreadsheet (.xlsx) as a data-store.  The use of the Tkinter interface, a
 simple GUI library bundled with Python, also emphasizes a light weight low
 dependency approach. Similarly, although unrelated to the code is this
 repository, [Auto PY to EXE](https://github.com/brentvollebregt/auto-py-to-exe)
-is used to package Monexif into a zero install executable.  This results in a
+is used to package TRACT into a zero install executable.  This results in a
 large executable that is somewhat slow to launch, but avoids spending time on
 setting up a build environment for a more customized software stack.
 
@@ -190,15 +192,15 @@ selected and cleared (Delete).
 ## Developer notes
 
 ```shell
-python -m venv venv_monexif
-. venv_monexif/bin/activate
+python -m venv venv_tract
+. venv_tract/bin/activate
 pip install -r requirements.txt
 # see pre-commit
 mkdir -p .git/hooks; cp pre-commit .git/hooks; chmod +x .git/hooks/pre-commit
 ```
-```
+
+```shell
 conda create -n pyexe --override-channels -c conda-forge 'python>=3.9'
 pip install auto-py-to-exe
-start /c/Users/TBrown02/pkg/miniconda/envs/pyexe/Scripts/auto-py-to-exe.exe
+start /c/Users/UserName/pkg/miniconda/envs/pyexe/Scripts/auto-py-to-exe.exe
 ```
-
