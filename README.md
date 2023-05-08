@@ -38,12 +38,19 @@ setting up a build environment for a more customized software stack.
 - New file can only be created as the first action, not
   after an existing file has been loaded.
 - Data file name *must* end in .xlsx, but not enforced.
+- You must load at least one image into the data file
+  before the rest of the UI is accessible.
 - No way to un-add incorrectly added group other
   than editing .xlsx file directly.
 - Having to resize the feedback panel every time.
 - Distributed .exe is large.
 
 ## Columns in the spreadsheet
+
+Note: you can customize columns by saving this file:
+https://raw.githubusercontent.com/USEPA/TRACT/main/tract/tract_fields.yml
+*in the same folder as the tract.exe file* and editing appropriately.
+The file must be named `tract_fields.yml`.
 
 In the order they occur from left to right:
 

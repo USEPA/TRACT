@@ -1,5 +1,6 @@
 import platform
 import sqlite3
+import sys
 from collections import namedtuple
 from hashlib import sha256
 from itertools import product
@@ -52,7 +53,13 @@ def update_row(con, id_: str, fields: list[str], row: list = None) -> None:
 
 
 def field_defs():
-    defs = yaml.safe_load(Path(__file__).with_name("tract_fields.yml").open())
+    src = Path(sys.argv[0]).with_name("tract_fields.yml")
+    if src.exists():
+        print(f"\nUsing field definitions from local file {src}\n")
+    else:
+        print("\nUsing internal field definitions\n")
+        src = Path(__file__).with_name("tract_fields.yml")
+    defs = yaml.safe_load(src.open())
     for k, v in defs["fields"].items():
         v["name"] = k
     return defs
