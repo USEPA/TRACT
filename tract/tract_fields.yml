@@ -1,5 +1,23 @@
+# You can edit this file to change the data collected for each image.
+# Your edited version of this file should be called `tract_fields.yml` and
+# placed in the same folder as `tract.exe`.
+
+# You should leave fileds starting with "image_" alone, and avoid creating
+# new fields starting with "image_".
+# Also, the `group_number`, `group_id`, and `observation_id` fields should
+# not be changed.
+
+# The remaining fields can be changed, reordered, removed, or used as
+# templates for new fields.
+# Maintain the existing indentation pattern.  The `values` lists can
+# be changed to add or remove options.
+
+# You will need to manually update existing spreadsheets to match changed
+# field definitions using Excel.
+
 # clear_to is used when adding groups (multiple in single image)
 # copy is used when linking observations
+
 fields:
   image_time:
     type: datetime
